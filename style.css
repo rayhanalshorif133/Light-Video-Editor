@@ -532,7 +532,7 @@ body {
     border-radius: 0 6px 6px 0;
 }
 
-/* SUBPANEL DRAWER (Speed, Volume) */
+/* SUBPANEL DRAWER (Speed, Volume, Rotate, Crop) */
 .tool-subpanel {
     background-color: var(--bg-subpanel);
     border-top: 1px solid var(--border-color);
@@ -542,7 +542,7 @@ body {
 }
 
 .tool-subpanel.open {
-    max-height: 180px;
+    max-height: 220px;
 }
 
 .subpanel-content {
@@ -563,6 +563,146 @@ body {
 .subpanel-val {
     color: var(--accent-yellow);
     font-weight: 600;
+}
+
+/* TRANSFORM ACTIONS (Rotate & Flip) */
+.transform-actions-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.action-pill-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background-color: #27272e;
+    color: #e0e0e0;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+    user-select: none;
+}
+
+.action-pill-btn:hover {
+    background-color: #383844;
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+.action-pill-btn:active {
+    transform: scale(0.96);
+}
+
+.action-pill-btn.active {
+    background-color: var(--accent-yellow);
+    color: #000000;
+    font-weight: 700;
+    border-color: var(--accent-yellow);
+}
+
+.action-pill-btn.reset-btn {
+    margin-left: auto;
+    background-color: transparent;
+    border-color: rgba(255, 255, 255, 0.15);
+    color: var(--text-muted);
+}
+
+.action-pill-btn.reset-btn:hover {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* CROP & FIT PANEL STYLES */
+.ratio-presets-row {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    margin-bottom: 10px;
+}
+
+.ratio-presets-row::-webkit-scrollbar {
+    display: none;
+}
+
+.ratio-btn {
+    flex: 1;
+    min-width: 64px;
+    padding: 7px 8px;
+    background-color: #27272e;
+    color: #dcdce2;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.ratio-btn:hover {
+    background-color: #383844;
+    color: #ffffff;
+}
+
+.ratio-btn.active {
+    background-color: var(--accent-yellow);
+    color: #000000;
+    font-weight: 700;
+    border-color: var(--accent-yellow);
+}
+
+.fit-mode-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.mode-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 60px;
+}
+
+.mode-buttons {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+}
+
+.fit-btn {
+    flex: 1;
+    padding: 6px 12px;
+    background-color: #27272e;
+    color: #e0e0e0;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    text-align: center;
+}
+
+.fit-btn:hover {
+    background-color: #383844;
+    color: #ffffff;
+}
+
+.fit-btn.active {
+    background-color: #ffffff;
+    color: #000000;
+    font-weight: 700;
 }
 
 .speed-presets {
@@ -658,10 +798,66 @@ body {
     background-color: var(--bg-bar);
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 36px;
-    padding: 0 24px;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 0 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.bottom-toolbar::-webkit-scrollbar {
+    display: none;
+}
+
+@media (min-width: 720px) {
+    .bottom-toolbar {
+        justify-content: center;
+        gap: 18px;
+    }
+}
+
+/* TIMELINE BADGES FOR ROTATE, FLIP & ZOOM */
+.clip-rotation-badge {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    background-color: rgba(0, 187, 249, 0.85);
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.clip-flip-badge {
+    position: absolute;
+    bottom: 4px;
+    left: 36px;
+    background-color: rgba(157, 78, 221, 0.85);
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.clip-zoom-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background-color: rgba(255, 0, 127, 0.85);
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    z-index: 5;
+    pointer-events: none;
 }
 
 .tool-btn {

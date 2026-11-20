@@ -34,6 +34,10 @@
         historyIndex: -1,
         maxHistory: 30,
 
+        // Aspect ratio & framing
+        aspectRatio: 'original',
+        fitMode: 'contain',
+
         // Export settings
         exportResolution: 'original'
     };
@@ -71,12 +75,28 @@
     const btnCut = document.getElementById('btnCut');
     const btnToolSpeed = document.getElementById('btnToolSpeed');
     const btnToolVolume = document.getElementById('btnToolVolume');
+    const btnToolTransform = document.getElementById('btnToolTransform');
+    const btnToolCrop = document.getElementById('btnToolCrop');
     const btnToolReverse = document.getElementById('btnToolReverse');
     const btnToolDelete = document.getElementById('btnToolDelete');
 
     const toolSubpanel = document.getElementById('toolSubpanel');
     const panelSpeed = document.getElementById('panelSpeed');
     const panelVolume = document.getElementById('panelVolume');
+    const panelTransform = document.getElementById('panelTransform');
+    const panelCrop = document.getElementById('panelCrop');
+
+    const transformValBadge = document.getElementById('transformValBadge');
+    const btnRotateRight = document.getElementById('btnRotateRight');
+    const btnFlipH = document.getElementById('btnFlipH');
+    const btnFlipV = document.getElementById('btnFlipV');
+    const btnResetTransform = document.getElementById('btnResetTransform');
+
+    const cropValBadge = document.getElementById('cropValBadge');
+    const zoomSlider = document.getElementById('zoomSlider');
+    const btnZoomMinus = document.getElementById('btnZoomMinus');
+    const btnZoomPlus = document.getElementById('btnZoomPlus');
+    const btnZoomReset = document.getElementById('btnZoomReset');
     const speedValBadge = document.getElementById('speedValBadge');
     const speedSlider = document.getElementById('speedSlider');
     const btnSpeedReset = document.getElementById('btnSpeedReset');
@@ -195,7 +215,26 @@
         checkInitialVideo();
     }
 
-    // Adapt video frame box to video's aspect ratio
+    // Apply real-time CSS transforms (Rotation, Flip, Zoom, Fit) to main video preview
+    function applyVideoTransforms() {
+        const clip = state.clips[state.activeClipIndex];
+        if (!clip) {
+            mainVideo.style.transform = '';
+            mainVideo.style.objectFit = 'contain';
+            return;
+        }
+
+        const rot = (clip.rotation || 0) % 360;
+        const flipH = clip.flipH ? -1 : 1;
+        const flipV = clip.flipV ? -1 : 1;
+        const zoom = clip.zoom || 1.0;
+        const fitMode = clip.fitMode || state.fitMode || 'contain';
+
+        mainVideo.style.transform = `rotate(${rot}deg) scaleX(${flipH}) scaleY(${flipV}) scale(${zoom})`;
+        mainVideo.style.objectFit = fitMode === 'cover' ? 'cover' : 'contain';
+    }
+
+    // Adapt video frame box to active aspect ratio
     function updateVideoFrameSize() {
         if (!state.videoWidth || !state.videoHeight) {
             videoFrameBox.style.width = '280px';
@@ -205,16 +244,23 @@
 
         const containerW = videoPreviewContainer.clientWidth - 32;
         const containerH = videoPreviewContainer.clientHeight - 32;
-        const videoAspect = state.videoWidth / state.videoHeight;
+        
+        let targetAspect = state.videoWidth / state.videoHeight;
+        if (state.aspectRatio === '16:9') targetAspect = 16 / 9;
+        else if (state.aspectRatio === '9:16') targetAspect = 9 / 16;
+        else if (state.aspectRatio === '1:1') targetAspect = 1.0;
+        else if (state.aspectRatio === '4:5') targetAspect = 4 / 5;
+        else if (state.aspectRatio === '21:9') targetAspect = 21 / 9;
+
         const containerAspect = containerW / containerH;
 
         let targetW, targetH;
-        if (videoAspect > containerAspect) {
+        if (targetAspect > containerAspect) {
             targetW = containerW;
-            targetH = containerW / videoAspect;
+            targetH = containerW / targetAspect;
         } else {
             targetH = containerH;
-            targetW = containerH * videoAspect;
+            targetW = containerH * targetAspect;
         }
 
         videoFrameBox.style.width = `${Math.round(targetW)}px`;
@@ -300,7 +346,12 @@
                 sourceEnd: state.videoDuration,
                 speed: 1.0,
                 volume: 1.0,
-                reverse: false
+                reverse: false,
+                rotation: 0,
+                flipH: false,
+                flipV: false,
+                zoom: 1.0,
+                fitMode: 'contain'
             }];
             state.activeClipIndex = 0;
             state.currentTime = 0;
@@ -315,6 +366,7 @@
             statusRes.textContent = `${state.videoWidth}x${state.videoHeight}`;
 
             updateVideoFrameSize();
+            applyVideoTransforms();
             updateTimelinePadding();
             renderTimeline();
             seekToProjectTime(0, true);
@@ -338,7 +390,9 @@
             desc,
             clips: JSON.parse(JSON.stringify(state.clips)),
             activeClipIndex: state.activeClipIndex,
-            currentTime: state.currentTime
+            currentTime: state.currentTime,
+            aspectRatio: state.aspectRatio,
+            fitMode: state.fitMode
         };
 
         state.history.push(snapshot);
@@ -359,9 +413,14 @@
             state.clips = JSON.parse(JSON.stringify(snap.clips));
             state.activeClipIndex = Math.min(snap.activeClipIndex, state.clips.length - 1);
             state.currentTime = Math.min(snap.currentTime, getTotalDuration());
+            state.aspectRatio = snap.aspectRatio || 'original';
+            state.fitMode = snap.fitMode || 'contain';
             
+            updateVideoFrameSize();
+            applyVideoTransforms();
             renderTimeline();
             seekToProjectTime(state.currentTime, true);
+            updateDrawerValues();
             updateUI();
             updateUndoRedoButtons();
         }
@@ -375,9 +434,14 @@
             state.clips = JSON.parse(JSON.stringify(snap.clips));
             state.activeClipIndex = Math.min(snap.activeClipIndex, state.clips.length - 1);
             state.currentTime = Math.min(snap.currentTime, getTotalDuration());
+            state.aspectRatio = snap.aspectRatio || 'original';
+            state.fitMode = snap.fitMode || 'contain';
 
+            updateVideoFrameSize();
+            applyVideoTransforms();
             renderTimeline();
             seekToProjectTime(state.currentTime, true);
+            updateDrawerValues();
             updateUI();
             updateUndoRedoButtons();
         }
@@ -428,6 +492,27 @@
                 clipBox.appendChild(spdBadge);
             }
 
+            if (clip.rotation && clip.rotation % 360 !== 0) {
+                const rotBadge = document.createElement('div');
+                rotBadge.className = 'clip-rotation-badge';
+                rotBadge.textContent = `${clip.rotation % 360}°`;
+                clipBox.appendChild(rotBadge);
+            }
+
+            if (clip.flipH || clip.flipV) {
+                const flipBadge = document.createElement('div');
+                flipBadge.className = 'clip-flip-badge';
+                flipBadge.textContent = (clip.flipH ? '⇄' : '') + (clip.flipV ? '⇅' : '');
+                clipBox.appendChild(flipBadge);
+            }
+
+            if (clip.zoom && clip.zoom > 1.01) {
+                const zoomBadge = document.createElement('div');
+                zoomBadge.className = 'clip-zoom-badge';
+                zoomBadge.textContent = `${Math.round(clip.zoom * 100)}%`;
+                clipBox.appendChild(zoomBadge);
+            }
+
             if (index === state.activeClipIndex) {
                 const leftHandle = document.createElement('div');
                 leftHandle.className = 'trim-handle trim-handle-left';
@@ -457,6 +542,7 @@
         if (index < 0 || index >= state.clips.length) return;
         const prevIndex = state.activeClipIndex;
         state.activeClipIndex = index;
+        applyVideoTransforms();
         renderTimeline();
         updateDrawerValues();
 
@@ -591,6 +677,8 @@
             Array.from(clipsStrip.children).forEach((box, idx) => {
                 box.classList.toggle('active', idx === matchedIndex);
             });
+            applyVideoTransforms();
+            updateDrawerValues();
         }
 
         if (syncScroll && !state.isScrubbing) {
@@ -863,19 +951,104 @@
         state.activeClipIndex = newActiveIndex;
         state.currentTime = targetTime;
 
+        applyVideoTransforms();
+        updateDrawerValues();
         pushHistory('Delete Clip');
         renderTimeline();
         seekToProjectTime(targetTime, true);
         updateUI();
     }
 
-    // --- SUB-PANEL DRAWER (Speed, Volume) ---
+    // --- ROTATE & FLIP ACTIONS ---
+    function rotateActiveClip() {
+        const clip = state.clips[state.activeClipIndex];
+        if (!clip) return;
+        clip.rotation = ((clip.rotation || 0) + 90) % 360;
+        applyVideoTransforms();
+        updateDrawerValues();
+        renderTimeline();
+        pushHistory(`Rotate Clip ${clip.rotation}°`);
+    }
+
+    function toggleFlipHorizontal() {
+        const clip = state.clips[state.activeClipIndex];
+        if (!clip) return;
+        clip.flipH = !clip.flipH;
+        applyVideoTransforms();
+        updateDrawerValues();
+        renderTimeline();
+        pushHistory(`Flip Horizontal ${clip.flipH ? 'On' : 'Off'}`);
+    }
+
+    function toggleFlipVertical() {
+        const clip = state.clips[state.activeClipIndex];
+        if (!clip) return;
+        clip.flipV = !clip.flipV;
+        applyVideoTransforms();
+        updateDrawerValues();
+        renderTimeline();
+        pushHistory(`Flip Vertical ${clip.flipV ? 'On' : 'Off'}`);
+    }
+
+    function resetActiveClipTransform() {
+        const clip = state.clips[state.activeClipIndex];
+        if (!clip) return;
+        clip.rotation = 0;
+        clip.flipH = false;
+        clip.flipV = false;
+        applyVideoTransforms();
+        updateDrawerValues();
+        renderTimeline();
+        pushHistory('Reset Transform');
+    }
+
+    // --- CROP & FIT ACTIONS ---
+    function setAspectRatio(ratio) {
+        state.aspectRatio = ratio;
+        updateVideoFrameSize();
+        updateDrawerValues();
+        applyVideoTransforms();
+        pushHistory(`Aspect Ratio: ${ratio}`);
+    }
+
+    function setFitMode(mode) {
+        state.fitMode = mode;
+        const clip = state.clips[state.activeClipIndex];
+        if (clip) {
+            clip.fitMode = mode;
+        }
+        applyVideoTransforms();
+        updateDrawerValues();
+        pushHistory(`Fit Mode: ${mode}`);
+    }
+
+    function setClipZoom(zoomPercent, recordHistory = false) {
+        const clip = state.clips[state.activeClipIndex];
+        if (!clip) return;
+        const zoom = Math.max(1.0, Math.min(3.0, zoomPercent / 100));
+        clip.zoom = zoom;
+        applyVideoTransforms();
+        updateDrawerValues();
+        renderTimeline();
+        if (recordHistory) {
+            pushHistory(`Zoom ${Math.round(zoom * 100)}%`);
+        }
+    }
+
+    // --- SUB-PANEL DRAWER (Speed, Volume, Transform, Crop) ---
     function toggleToolDrawer(panelName) {
         const isOpen = toolSubpanel.classList.contains('open');
         const isSpeed = panelName === 'speed';
         const isVol = panelName === 'volume';
+        const isTransform = panelName === 'transform';
+        const isCrop = panelName === 'crop';
 
-        if (isOpen && ((isSpeed && panelSpeed.style.display === 'block') || (isVol && panelVolume.style.display === 'block'))) {
+        if (isOpen && (
+            (isSpeed && panelSpeed.style.display === 'block') ||
+            (isVol && panelVolume.style.display === 'block') ||
+            (isTransform && panelTransform.style.display === 'block') ||
+            (isCrop && panelCrop.style.display === 'block')
+        )) {
             closeToolDrawer();
             return;
         }
@@ -883,9 +1056,13 @@
         toolSubpanel.classList.add('open');
         panelSpeed.style.display = isSpeed ? 'block' : 'none';
         panelVolume.style.display = isVol ? 'block' : 'none';
+        panelTransform.style.display = isTransform ? 'block' : 'none';
+        panelCrop.style.display = isCrop ? 'block' : 'none';
 
         btnToolSpeed.classList.toggle('active', isSpeed);
         btnToolVolume.classList.toggle('active', isVol);
+        btnToolTransform.classList.toggle('active', isTransform);
+        btnToolCrop.classList.toggle('active', isCrop);
 
         updateDrawerValues();
     }
@@ -894,24 +1071,56 @@
         toolSubpanel.classList.remove('open');
         btnToolSpeed.classList.remove('active');
         btnToolVolume.classList.remove('active');
+        btnToolTransform.classList.remove('active');
+        btnToolCrop.classList.remove('active');
     }
 
     function updateDrawerValues() {
         const clip = state.clips[state.activeClipIndex];
         if (!clip) return;
 
+        // Speed
         const speed = clip.speed || 1.0;
         const percent = Math.round(speed * 100);
-        speedValBadge.textContent = percent === 100 ? '100% (Normal)' : `${percent}% (${speed.toFixed(2)}x)`;
+        if (speedValBadge) speedValBadge.textContent = percent === 100 ? '100% (Normal)' : `${percent}% (${speed.toFixed(2)}x)`;
         if (speedSlider) speedSlider.value = percent;
         document.querySelectorAll('.speed-btn').forEach(btn => {
             const btnSpeed = parseFloat(btn.dataset.speed);
             btn.classList.toggle('active', Math.abs(btnSpeed - speed) < 0.01);
         });
 
+        // Volume
         const volPercent = Math.round((clip.volume !== undefined ? clip.volume : 1.0) * 100);
-        volumeValBadge.textContent = `${volPercent}%`;
-        volumeSlider.value = volPercent;
+        if (volumeValBadge) volumeValBadge.textContent = `${volPercent}%`;
+        if (volumeSlider) volumeSlider.value = volPercent;
+
+        // Transform (Rotate & Flip)
+        const rot = (clip.rotation || 0) % 360;
+        const flipH = !!clip.flipH;
+        const flipV = !!clip.flipV;
+        let transDesc = `${rot}°`;
+        if (flipH && flipV) transDesc += ' (Flip HV)';
+        else if (flipH) transDesc += ' (Flip H)';
+        else if (flipV) transDesc += ' (Flip V)';
+        else if (rot === 0) transDesc = '0° (Normal)';
+        if (transformValBadge) transformValBadge.textContent = transDesc;
+
+        if (btnFlipH) btnFlipH.classList.toggle('active', flipH);
+        if (btnFlipV) btnFlipV.classList.toggle('active', flipV);
+
+        // Crop & Fit
+        const curRatio = state.aspectRatio || 'original';
+        const curFit = clip.fitMode || state.fitMode || 'contain';
+        const curZoom = Math.round((clip.zoom || 1.0) * 100);
+
+        if (cropValBadge) cropValBadge.textContent = `${curRatio.toUpperCase()} • ${curFit === 'cover' ? 'Fill' : 'Fit'} • ${curZoom}%`;
+        document.querySelectorAll('.ratio-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.ratio === curRatio);
+        });
+        document.querySelectorAll('.fit-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.fit === curFit);
+        });
+        if (zoomSlider) zoomSlider.value = curZoom;
     }
 
     // --- HELPER UTILITIES ---
@@ -992,6 +1201,60 @@
     }
 
     // --- IN-BROWSER VIDEO COMPOSITOR & EXPORT ENGINE ---
+    function drawTransformedFrame(ctx, vid, canvasW, canvasH, clip) {
+        ctx.save();
+        
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvasW, canvasH);
+
+        const vw = vid.videoWidth || canvasW;
+        const vh = vid.videoHeight || canvasH;
+        const rot = ((clip && clip.rotation) || 0) % 360;
+        const isSideways = (rot === 90 || rot === 270);
+
+        const srcEffW = isSideways ? vh : vw;
+        const srcEffH = isSideways ? vw : vh;
+        const srcEffAspect = srcEffW / srcEffH;
+        const canvasAspect = canvasW / canvasH;
+
+        const fitMode = (clip && clip.fitMode) || state.fitMode || 'contain';
+
+        let drawEffW, drawEffH;
+        if (fitMode === 'cover') {
+            if (srcEffAspect > canvasAspect) {
+                drawEffH = canvasH;
+                drawEffW = srcEffW * (canvasH / srcEffH);
+            } else {
+                drawEffW = canvasW;
+                drawEffH = srcEffH * (canvasW / srcEffW);
+            }
+        } else { // 'contain'
+            if (srcEffAspect > canvasAspect) {
+                drawEffW = canvasW;
+                drawEffH = srcEffH * (canvasW / srcEffW);
+            } else {
+                drawEffH = canvasH;
+                drawEffW = srcEffW * (canvasH / srcEffH);
+            }
+        }
+
+        const drawVidW = isSideways ? drawEffH : drawEffW;
+        const drawVidH = isSideways ? drawEffW : drawEffH;
+
+        const zoom = (clip && clip.zoom) || 1.0;
+        const flipH = (clip && clip.flipH) ? -1 : 1;
+        const flipV = (clip && clip.flipV) ? -1 : 1;
+
+        ctx.translate(canvasW / 2, canvasH / 2);
+        if (rot !== 0) {
+            ctx.rotate((rot * Math.PI) / 180);
+        }
+        ctx.scale(flipH * zoom, flipV * zoom);
+        ctx.drawImage(vid, -drawVidW / 2, -drawVidH / 2, drawVidW, drawVidH);
+
+        ctx.restore();
+    }
+
     async function startExport() {
         modalExportForm.style.display = 'none';
         modalExportProgress.style.display = 'block';
@@ -1024,16 +1287,30 @@
         const { clips, resolution } = payload;
         if (!clips || !clips.length) throw new Error('No clips to export.');
 
-        let width = mainVideo.videoWidth || 1280;
-        let height = mainVideo.videoHeight || 720;
-        if (resolution === '1080p') {
-            const aspect = width / height;
-            if (aspect >= 1) { width = 1920; height = Math.round(1920 / aspect); }
-            else { height = 1920; width = Math.round(1920 * aspect); }
-        } else if (resolution === '720p') {
-            const aspect = width / height;
-            if (aspect >= 1) { width = 1280; height = Math.round(1280 / aspect); }
-            else { height = 1280; width = Math.round(1280 * aspect); }
+        let targetAspect = (mainVideo.videoWidth && mainVideo.videoHeight) 
+            ? (mainVideo.videoWidth / mainVideo.videoHeight) 
+            : (16 / 9);
+
+        if (state.aspectRatio === '16:9') targetAspect = 16 / 9;
+        else if (state.aspectRatio === '9:16') targetAspect = 9 / 16;
+        else if (state.aspectRatio === '1:1') targetAspect = 1.0;
+        else if (state.aspectRatio === '4:5') targetAspect = 4 / 5;
+        else if (state.aspectRatio === '21:9') targetAspect = 21 / 9;
+
+        let baseLong = 1280;
+        if (resolution === '1080p') baseLong = 1920;
+        else if (resolution === '720p') baseLong = 1280;
+        else {
+            baseLong = Math.max(mainVideo.videoWidth || 1280, mainVideo.videoHeight || 720);
+        }
+
+        let width, height;
+        if (targetAspect >= 1) {
+            width = baseLong;
+            height = Math.round(baseLong / targetAspect);
+        } else {
+            height = baseLong;
+            width = Math.round(baseLong * targetAspect);
         }
         width = width % 2 === 0 ? width : width + 1;
         height = height % 2 === 0 ? height : height + 1;
@@ -1157,7 +1434,7 @@
                     const frameTime = clip.sourceEnd - ratio * (clip.sourceEnd - clip.sourceStart);
                     await safeSeek(exportVid, frameTime);
                     try {
-                        ctx.drawImage(exportVid, 0, 0, width, height);
+                        drawTransformedFrame(ctx, exportVid, width, height, clip);
                     } catch (e) {}
 
                     const currentTotal = accumulatedTime + (f / totalFrames) * effDur;
@@ -1194,7 +1471,7 @@
                         }
 
                         try {
-                            ctx.drawImage(exportVid, 0, 0, width, height);
+                            drawTransformedFrame(ctx, exportVid, width, height, clip);
                         } catch (e) {}
 
                         const clipTimePassed = Math.max(0, exportVid.currentTime - clip.sourceStart) / (clip.speed || 1.0);
@@ -1362,8 +1639,62 @@
         btnCut.addEventListener('click', cutAtNeedle);
         btnToolSpeed.addEventListener('click', () => toggleToolDrawer('speed'));
         btnToolVolume.addEventListener('click', () => toggleToolDrawer('volume'));
+        btnToolTransform.addEventListener('click', () => toggleToolDrawer('transform'));
+        btnToolCrop.addEventListener('click', () => toggleToolDrawer('crop'));
         btnToolReverse.addEventListener('click', toggleClipReverse);
         btnToolDelete.addEventListener('click', deleteActiveClip);
+
+        if (btnRotateRight) btnRotateRight.addEventListener('click', rotateActiveClip);
+        if (btnFlipH) btnFlipH.addEventListener('click', toggleFlipHorizontal);
+        if (btnFlipV) btnFlipV.addEventListener('click', toggleFlipVertical);
+        if (btnResetTransform) btnResetTransform.addEventListener('click', resetActiveClipTransform);
+
+        document.querySelectorAll('.ratio-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                setAspectRatio(btn.dataset.ratio);
+            });
+        });
+
+        document.querySelectorAll('.fit-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                setFitMode(btn.dataset.fit);
+            });
+        });
+
+        if (zoomSlider) {
+            zoomSlider.addEventListener('input', (e) => {
+                setClipZoom(parseFloat(e.target.value), false);
+            });
+            zoomSlider.addEventListener('change', (e) => {
+                setClipZoom(parseFloat(e.target.value), true);
+            });
+        }
+
+        if (btnZoomMinus) {
+            btnZoomMinus.addEventListener('click', () => {
+                const clip = state.clips[state.activeClipIndex];
+                if (!clip) return;
+                const cur = Math.round((clip.zoom || 1.0) * 100);
+                const next = Math.max(100, cur - 10);
+                setClipZoom(next, true);
+            });
+        }
+
+        if (btnZoomPlus) {
+            btnZoomPlus.addEventListener('click', () => {
+                const clip = state.clips[state.activeClipIndex];
+                if (!clip) return;
+                const cur = Math.round((clip.zoom || 1.0) * 100);
+                const next = Math.min(300, cur + 10);
+                setClipZoom(next, true);
+            });
+        }
+
+        if (btnZoomReset) {
+            btnZoomReset.addEventListener('click', () => {
+                setClipZoom(100, true);
+            });
+        }
 
         document.querySelectorAll('.speed-btn').forEach(btn => {
             btn.addEventListener('click', () => setClipSpeed(btn.dataset.speed, true));
@@ -1458,6 +1789,12 @@
                 e.preventDefault();
                 cutAtNeedle();
             }
+        } else if (e.code === 'KeyR' && !e.ctrlKey) {
+            e.preventDefault();
+            rotateActiveClip();
+        } else if (e.code === 'KeyH' && !e.ctrlKey) {
+            e.preventDefault();
+            toggleFlipHorizontal();
         } else if (e.ctrlKey && e.code === 'KeyZ') {
             e.preventDefault();
             undo();
