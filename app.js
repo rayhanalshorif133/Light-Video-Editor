@@ -222,8 +222,13 @@
     }
 
     function checkInitialVideo() {
-        // Automatically load demo sample video on first visit
-        loadVideoUrl('test_sample.mp4', 'test_sample.mp4');
+        // Start in clean empty state with no demo video preloaded
+        videoFrameBox.style.display = 'none';
+        emptyState.style.display = 'flex';
+        statusText.textContent = 'No Video Loaded';
+        statusRes.textContent = 'Resolution: --';
+        currentTimeEl.textContent = '0:00';
+        totalDurationEl.textContent = '0:00';
     }
 
     // --- TIMELINE PADDING & NEEDLE MATH ---
@@ -305,6 +310,7 @@
             pushHistory('Load Video');
 
             emptyState.style.display = 'none';
+            videoFrameBox.style.display = 'flex';
             statusText.textContent = label || 'Video Loaded';
             statusRes.textContent = `${state.videoWidth}x${state.videoHeight}`;
 
@@ -317,6 +323,7 @@
 
         mainVideo.onerror = () => {
             console.error('Failed to load video:', url);
+            videoFrameBox.style.display = 'none';
             emptyState.style.display = 'flex';
         };
     }
@@ -1322,9 +1329,9 @@
 
         btnAddMedia.addEventListener('click', () => hiddenFileInput.click());
         btnOpenVideoPrompt.addEventListener('click', () => hiddenFileInput.click());
-        btnLoadSamplePrompt.addEventListener('click', () => {
-            loadVideoUrl('test_sample.mp4', 'Demo Sample Video');
-        });
+        if (btnLoadSamplePrompt) {
+            btnLoadSamplePrompt.addEventListener('click', () => hiddenFileInput.click());
+        }
 
         hiddenFileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
