@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Light Video Editor - Web Studio</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="alternate icon" type="image/x-icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Main Mobile-style Studio Frame -->
+        <div class="mobile-frame" id="mobileFrame">
+
+            <!-- TOP HEADER (Navigation & Primary Actions) -->
+            <header class="top-header">
+                <div class="header-left">
+                    <div class="app-brand">
+                        <div class="app-brand-logo">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+                                <defs>
+                                    <linearGradient id="brandLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#00f5d4"/>
+                                        <stop offset="50%" stop-color="#9d4edd"/>
+                                        <stop offset="100%" stop-color="#ff007f"/>
+                                    </linearGradient>
+                                </defs>
+                                <polygon points="5 3 19 12 5 21 5 3" fill="url(#brandLogoGrad)"></polygon>
+                            </svg>
+                        </div>
+                        <span>Light Video Editor</span>
+                        <span class="app-badge-web">WEB</span>
+                    </div>
+                </div>
+
+                <div class="header-right">
+                    <!-- Undo Button -->
+                    <button class="btn-icon-header" id="btnUndo" title="Undo (Ctrl+Z)" disabled>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 7v6h6"></path>
+                            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Redo Button -->
+                    <button class="btn-icon-header" id="btnRedo" title="Redo (Ctrl+Y)" disabled>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 7v6h-6"></path>
+                            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Open Video File Button -->
+                    <button class="btn-text-header" id="btnAddMedia" title="Open any video from your device (Ctrl+O)">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span>Open Video</span>
+                    </button>
+
+                    <!-- Save / Export Button -->
+                    <button class="btn-text-header btn-save-header" id="btnTopSave" title="Save & Export Video (Ctrl+S)">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                        <span>Export</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- MAIN WORKSPACE -->
+            <main class="main-workspace">
+
+                <!-- VIDEO PREVIEW CONTAINER -->
+                <div class="video-preview-container" id="videoPreviewContainer">
+                    <div class="video-frame-box" id="videoFrameBox">
+                        <video id="mainVideo" playsinline preload="auto"></video>
+                        <div class="video-overlay-icon" id="videoOverlayIcon">
+                            <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- EMPTY STATE (Drag & Drop Prompt) -->
+                    <div class="video-empty-state" id="emptyState" style="display:none;">
+                        <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="2" y="2" width="20" height="20" rx="4"></rect>
+                            <circle cx="8" cy="8" r="2"></circle>
+                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                        </svg>
+                        <h3>No Video Loaded</h3>
+                        <p>Drag and drop any MP4, MOV, or WebM video file here to start editing</p>
+                        <div class="empty-state-buttons">
+                            <button class="btn-primary" id="btnOpenVideoPrompt">Choose Video...</button>
+                            <button class="btn-secondary" id="btnLoadSamplePrompt">Load Demo Video</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TIMELINE CONTROL BAR (Play/Pause, Timecode, Mute) -->
+                <div class="timeline-control-bar">
+                    <div class="tc-left">
+                        <button class="btn-play-pause" id="btnPlayPause" title="Play / Pause (Space)">
+                            <svg id="iconPlay" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            <svg id="iconPause" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" style="display:none;">
+                                <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+                                <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+                            </svg>
+                        </button>
+                        <div class="timecode-display">
+                            <span class="time-current" id="currentTime">0:00</span>
+                            <span class="time-sep">|</span>
+                            <span class="time-total" id="totalDuration">0:00</span>
+                        </div>
+                    </div>
+                    <div class="tc-right">
+                        <button class="btn-icon-header" id="btnMuteToggle" title="Mute Audio">
+                            <svg id="iconAudioOn" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                            </svg>
+                            <svg id="iconAudioMuted" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="display:none; color:var(--accent-red);">
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            </svg>
+                        </button>
+                        <button class="btn-icon-header" id="btnShortcuts" title="Keyboard Shortcuts">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                <path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M6 12h.001M10 12h.001M14 12h.001M18 12h.001M7 16h10"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TIMELINE TRACK SECTION (Scrollable track with fixed center playhead needle) -->
+                <section class="timeline-track-section">
+                    <!-- FIXED 50% CENTER NEEDLE -->
+                    <div class="center-playhead-needle" id="centerNeedle"></div>
+
+                    <!-- Scrollable Viewport -->
+                    <div class="timeline-viewport" id="timelineViewport">
+                        <div class="timeline-scroll-track" id="timelineScrollTrack">
+                            <div class="timeline-padding timeline-padding-start" id="padStart"></div>
+                            <div class="clips-strip" id="clipsStrip">
+                                <!-- Dynamic Clips Rendered Here -->
+                            </div>
+                            <div class="timeline-padding timeline-padding-end" id="padEnd"></div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <!-- SUB-PANEL DRAWER (For Speed, Volume, etc.) -->
+            <div class="tool-subpanel" id="toolSubpanel">
+                <!-- SPEED PANEL -->
+                <div class="subpanel-content" id="panelSpeed" style="display:none;">
+                    <div class="subpanel-header">
+                        <span>Clip Speed (10% - 200%)</span>
+                        <span class="subpanel-val" id="speedValBadge">100% (Normal)</span>
+                    </div>
+                    <div class="slider-row" style="margin-bottom: 12px;">
+                        <button class="step-btn" id="btnSpeedMinus" title="Decrease speed 5%">−</button>
+                        <input type="range" id="speedSlider" min="10" max="200" step="1" value="100" class="range-slider">
+                        <button class="step-btn" id="btnSpeedPlus" title="Increase speed 5%">+</button>
+                        <button class="preset-pill-btn" id="btnSpeedReset">100%</button>
+                    </div>
+                    <div class="speed-presets">
+                        <button class="speed-btn" data-speed="0.10">10%</button>
+                        <button class="speed-btn" data-speed="0.50">50%</button>
+                        <button class="speed-btn" data-speed="0.75">75%</button>
+                        <button class="speed-btn active" data-speed="1.00">100%</button>
+                        <button class="speed-btn" data-speed="1.10">110%</button>
+                        <button class="speed-btn" data-speed="1.20">120%</button>
+                        <button class="speed-btn" data-speed="1.50">150%</button>
+                        <button class="speed-btn" data-speed="2.00">200%</button>
+                    </div>
+                </div>
+
+                <!-- VOLUME PANEL -->
+                <div class="subpanel-content" id="panelVolume" style="display:none;">
+                    <div class="subpanel-header">
+                        <span>Clip Volume</span>
+                        <span class="subpanel-val" id="volumeValBadge">100%</span>
+                    </div>
+                    <div class="slider-row">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        </svg>
+                        <input type="range" id="volumeSlider" min="0" max="200" value="100" class="range-slider">
+                        <button class="preset-pill-btn" id="btnVolReset">100%</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTTOM ACTION TOOLBAR (As in demo.jpeg) -->
+            <footer class="bottom-toolbar">
+                <!-- Back / Collapse Chevron -->
+                <button class="tool-btn" id="btnBackTool" title="Collapse / Back">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                    <span>Back</span>
+                </button>
+
+                <!-- Cut / Split -->
+                <button class="tool-btn" id="btnCut" title="Cut / Split clip at needle position (C or S)">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6 3v18"></path>
+                        <path d="M18 3v18"></path>
+                        <line x1="6" y1="12" x2="18" y2="12"></line>
+                    </svg>
+                    <span>][ Cut</span>
+                </button>
+
+                <!-- Speed -->
+                <button class="tool-btn" id="btnToolSpeed" title="Change Playback Speed">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="9"></circle>
+                        <polyline points="12 6 12 12 15 15"></polyline>
+                    </svg>
+                    <span>Speed</span>
+                </button>
+
+                <!-- Volume -->
+                <button class="tool-btn" id="btnToolVolume" title="Adjust Volume">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    </svg>
+                    <span>Volume</span>
+                </button>
+
+                <!-- Reverse -->
+                <button class="tool-btn" id="btnToolReverse" title="Toggle Clip Reverse">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="1 4 1 10 7 10"></polyline>
+                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                    </svg>
+                    <span>Reverse</span>
+                </button>
+
+                <!-- Delete -->
+                <button class="tool-btn danger" id="btnToolDelete" title="Delete selected clip (Delete)">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    <span>Delete</span>
+                </button>
+            </footer>
+
+            <!-- BOTTOM STATUS FOOTER -->
+            <div class="status-footer">
+                <div class="status-left">
+                    <span id="statusText">Ready</span>
+                    <span>•</span>
+                    <span id="statusRes">Resolution: --</span>
+                </div>
+                <div class="status-right">
+                    <span>Light Video Editor</span>
+                    <span>•</span>
+                    <span>Client-side Engine</span>
+                </div>
+            </div>
+
+        </div> <!-- /mobile-frame -->
+    </div> <!-- /app-container -->
+
+    <!-- SAVE & EXPORT MODAL -->
+    <div class="modal-backdrop" id="saveModal" style="display:none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Save & Export Video</h3>
+                <button class="modal-close-btn" id="btnCloseSaveModal">&times;</button>
+            </div>
+            
+            <div class="modal-body" id="modalExportForm">
+                <!-- File Name Input -->
+                <div class="form-group">
+                    <label>Export File Name:</label>
+                    <div class="path-picker-row">
+                        <input type="text" id="saveFileNameInput" value="Light_Video_Export.mp4">
+                    </div>
+                    <small class="form-hint">The edited video will be rendered and downloaded directly to your computer.</small>
+                </div>
+
+                <!-- Export Quality Options -->
+                <div class="form-group">
+                    <label>Resolution & Quality:</label>
+                    <div class="preset-buttons">
+                        <button class="quality-btn active" data-res="original">Original</button>
+                        <button class="quality-btn" data-res="1080p">1080p (FHD)</button>
+                        <button class="quality-btn" data-res="720p">720p (HD)</button>
+                    </div>
+                </div>
+
+                <!-- Summary Info -->
+                <div class="export-summary-box">
+                    <div class="summary-item">
+                        <span class="label">Total Duration:</span>
+                        <span class="val" id="summaryDuration">0:00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="label">Clips Count:</span>
+                        <span class="val" id="summaryClipsCount">1</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="label">Render Engine:</span>
+                        <span class="val">In-Browser Media Compositor</span>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="btnCancelSave">Cancel</button>
+                    <button class="btn-primary" id="btnConfirmExport">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Render & Export</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- EXPORT PROGRESS VIEW -->
+            <div class="modal-body export-progress-view" id="modalExportProgress" style="display:none;">
+                <div class="progress-spinner-box">
+                    <div class="spinner"></div>
+                </div>
+                <h4 id="progressStatusTitle">Exporting Video...</h4>
+                <p id="progressStatusDesc">Applying cuts, speed adjustments and rendering frames</p>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+                </div>
+                <div class="progress-percent" id="progressPercent">0%</div>
+
+                <div class="export-complete-actions" id="exportCompleteActions" style="display:none;">
+                    <button class="btn-primary" id="btnDownloadExported">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span>Download Video</span>
+                    </button>
+                    <button class="btn-secondary" id="btnPlayExportedVideo">
+                        <span>Preview Exported Video</span>
+                    </button>
+                    <button class="btn-secondary" id="btnDoneExport">
+                        <span>Done</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PREVIEW EXPORTED MODAL -->
+    <div class="modal-backdrop" id="previewModal" style="display:none;">
+        <div class="modal-card" style="max-width: 640px;">
+            <div class="modal-header">
+                <h3>Export Preview</h3>
+                <button class="modal-close-btn" id="btnClosePreviewModal">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 12px; background: #000; text-align: center;">
+                <video id="previewExportedVideo" controls style="max-width: 100%; max-height: 480px; border-radius: 8px;"></video>
+            </div>
+        </div>
+    </div>
+
+    <!-- KEYBOARD SHORTCUTS MODAL -->
+    <div class="modal-backdrop" id="shortcutsModal" style="display:none;">
+        <div class="modal-card modal-card-sm">
+            <div class="modal-header">
+                <h3>Keyboard Shortcuts</h3>
+                <button class="modal-close-btn" id="btnCloseShortcutsModal">&times;</button>
+            </div>
+            <div class="modal-body shortcuts-list">
+                <div class="shortcut-row"><kbd>Space</kbd> <span>Play / Pause</span></div>
+                <div class="shortcut-row"><kbd>C</kbd> or <kbd>S</kbd> <span>Cut / Split at needle</span></div>
+                <div class="shortcut-row"><kbd>Ctrl + Z</kbd> <span>Undo</span></div>
+                <div class="shortcut-row"><kbd>Ctrl + Y</kbd> <span>Redo</span></div>
+                <div class="shortcut-row"><kbd>Delete</kbd> <span>Delete active clip</span></div>
+                <div class="shortcut-row"><kbd>Ctrl + S</kbd> <span>Save / Export</span></div>
+                <div class="shortcut-row"><kbd>Ctrl + O</kbd> <span>Open Video</span></div>
+                <div class="shortcut-row"><kbd>&larr;</kbd> / <kbd>&rarr;</kbd> <span>Step 0.1s backward / forward</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HIDDEN FILE INPUT FOR BROWSING -->
+    <input type="file" id="hiddenFileInput" accept="video/mp4,video/webm,video/ogg,video/quicktime,video/*" style="display:none;">
+
+    <script src="app.js"></script>
+</body>
+</html>
