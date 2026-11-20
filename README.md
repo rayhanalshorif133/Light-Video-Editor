@@ -1,38 +1,103 @@
-# Light Video Editor (Web Studio)
+<div align="center">
 
-A fast, lightweight, and modern fully client-side mobile & desktop web video editor. Runs 100% in any modern web browser with zero server dependencies, and is hosted directly on **GitHub Pages**.
+# 🎬 Light Video Editor (Web Studio)
 
-🔗 **Live Demo:** [https://rayhanalshorif133.github.io/light-Video-Editor/](https://rayhanalshorif133.github.io/light-Video-Editor/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-brightgreen?style=for-the-badge&logo=github)](https://rayhanalshorif133.github.io/light-Video-Editor/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+[![Zero Server](https://img.shields.io/badge/Backend-100%25%20Client--Side-blue?style=for-the-badge&logo=html5)](https://rayhanalshorif133.github.io/light-Video-Editor/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge)](https://github.com/rayhanalshorif133/light-Video-Editor/pulls)
+
+<br/>
+
+![Light Video Editor Banner](thumbnail.png)
+
+<br/>
+
+**A fast, lightweight, and modern in-browser video editing studio.**  
+Runs 100% on the client side with zero server dependencies, keeping your media completely private on your own device.
+
+👉 **[Launch Online Editor Now](https://rayhanalshorif133.github.io/light-Video-Editor/)**
+
+</div>
 
 ---
 
-## 🌟 Key Features
+## ✨ Features & Capabilities
 
-1. **100% Client-Side:** No server, backend, or cloud upload required. Runs completely private in your browser.
-2. **Precision Cutting:** Split video clips at the exact center playhead needle (`C` or `S`).
-3. **Yellow Trimming Handles:** Drag start and end handles on any clip.
-4. **Speed Control (10% to 200%):** Smooth slider, `−` / `+` step buttons, and instant presets (`10%`, `50%`, `75%`, `100%`, `110%`, `120%`, `150%`, `200%`).
-5. **Volume Control:** 0% to 200% volume slider with reset.
-6. **Reverse Clip Playback:** 1-click reverse video toggle.
-7. **Full Undo / Redo:** Complete history stack (`Ctrl+Z`, `Ctrl+Y`).
-8. **In-Browser Filmstrip Thumbnails:** Automatically extracted and cached frame-by-frame preview.
-9. **In-Browser Video Export & Download:** Real canvas + audio compositor with MediaRecorder that renders your cut, speed-adjusted clips and downloads the exported video file directly to your device.
-10. **Drag & Drop:** Drop any video file (`.mp4`, `.webm`, `.mov`) into the browser to edit.
+- **⚡ 100% In-Browser & Private:** Zero video uploads to external servers. All cuts, transforms, audio processing, and rendering happen right inside your browser.
+- **✂️ Precision Cut & Split:** Cut or split video clips exactly at the center needle playhead position using the `][ Cut` button or keyboard shortcuts (`C` or `S`).
+- **🎚️ Multi-Clip Timeline Filmstrip:** Real-time thumbnail preview extraction across every clip in the timeline with auto-caching.
+- **🔄 Rotate & Flip:**
+  - **Rotate 90°:** Instant 90° clockwise rotations (`0°`, `90°`, `180°`, `270°`) with real-time preview (Shortcut: `R`).
+  - **Flip Horizontal (Mirror):** Mirror clips horizontally (Shortcut: `H`).
+  - **Flip Vertical:** Invert clips vertically.
+  - **Reset Transform:** One-click reset to original orientation.
+- **📐 Crop, Aspect Ratio & Fit Mode:**
+  - **Aspect Ratios:** `Original`, `16:9` (YouTube / Widescreen), `9:16` (Shorts / Reels / TikTok), `1:1` (Square Instagram), `4:5` (Social Feed), and `21:9` (Ultrawide Cinema).
+  - **Fit Styles:** `Fit (Contain)` with clean letterbox, or `Crop to Fill` for borderless edge-to-edge framing.
+  - **Zoom / Punch-In:** Smooth 100% to 300% zoom controls.
+- **⚡ Speed Control (10% to 200%):** Fine-tune playback speed from extreme slow-mo (10%) to hyperlapse (200%) with step buttons and quick presets.
+- **🔊 Volume Adjustment:** Boost or mute clip volume from 0% to 200%.
+- **🔁 Reverse Clip Playback:** 1-click toggle to play any clip in reverse.
+- **💾 Real Video Compositor & Export:** Renders your final timeline into MP4 or WebM directly in the browser using HTML5 Canvas + Web Audio API + MediaRecorder.
+- **↩️ Undo / Redo:** Full history stack (`Ctrl + Z`, `Ctrl + Y`) for every action.
+- **📂 Drag & Drop:** Effortlessly drop any video file (`.mp4`, `.webm`, `.mov`) into the browser to begin editing immediately.
 
 ---
 
-## 🚀 How to Run & Deploy to GitHub Pages
+## ⌨️ Keyboard Shortcuts
 
-### Option 1: GitHub Pages (Automatic)
-The project is hosted from the `gh-pages` branch. Visiting `https://rayhanalshorif133.github.io/light-Video-Editor/` will load the editor instantly.
+| Shortcut | Action |
+|:---|:---|
+| <kbd>Space</kbd> | Play / Pause playback |
+| <kbd>C</kbd> or <kbd>S</kbd> | Cut / Split clip at needle position |
+| <kbd>R</kbd> | Rotate active clip 90° Clockwise |
+| <kbd>H</kbd> | Flip Horizontal (Mirror) active clip |
+| <kbd>Ctrl + Z</kbd> | Undo last action |
+| <kbd>Ctrl + Y</kbd> | Redo action |
+| <kbd>Delete</kbd> / <kbd>Backspace</kbd> | Delete active clip |
+| <kbd>Ctrl + S</kbd> | Open Save & Export modal |
+| <kbd>Ctrl + O</kbd> | Open file dialog to load video |
+| <kbd>&larr;</kbd> / <kbd>&rarr;</kbd> | Step playhead 0.1s backward / forward |
 
-### Option 2: Run Locally
-You can run any local static HTTP server, for example:
+---
+
+## 🚀 How to Run Locally
+
+Since **Light Video Editor** is a pure static web application, you can run it with any local static HTTP server:
+
 ```bash
-# Python
+# Clone the repository
+git clone https://github.com/rayhanalshorif133/light-Video-Editor.git
+cd light-Video-Editor
+
+# Start with Python
 python -m http.server 8000
 
-# Node / npx
+# OR start with Node.js
 npx serve .
 ```
-Then open `http://localhost:8000/` in your browser.
+
+Open `http://localhost:8000` in your web browser.
+
+---
+
+## 🌐 Deployment to GitHub Pages
+
+The web build is automatically deployed to the `gh-pages` branch:
+
+```bash
+# Push latest build to GitHub Pages
+git subtree split --prefix web-build -b gh-pages-split
+git branch -f gh-pages gh-pages-split
+git branch -D gh-pages-split
+git push origin gh-pages --force
+```
+
+Live website: **https://rayhanalshorif133.github.io/light-Video-Editor/**
+
+---
+
+## 📄 License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
