@@ -94,6 +94,7 @@
                 <div class="video-preview-container" id="videoPreviewContainer">
                     <div class="video-frame-box" id="videoFrameBox" style="display:none;">
                         <video id="mainVideo" playsinline preload="auto"></video>
+                        <div class="snapshot-flash" id="snapshotFlash"></div>
                         <div class="video-overlay-icon" id="videoOverlayIcon">
                             <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
                                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -142,6 +143,12 @@
                         </div>
                     </div>
                     <div class="tc-right">
+                        <button class="btn-icon-header" id="btnSnapshot" title="Take Snapshot / Screenshot (P)">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                <circle cx="12" cy="13" r="4"></circle>
+                            </svg>
+                        </button>
                         <button class="btn-icon-header" id="btnMuteToggle" title="Mute Audio">
                             <svg id="iconAudioOn" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
                                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -354,6 +361,25 @@
                     <span>Reverse</span>
                 </button>
 
+                <!-- Snapshot -->
+                <button class="tool-btn" id="btnToolSnapshot" title="Take Snapshot / Screenshot (P)">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                    <span>Snapshot</span>
+                </button>
+
+                <!-- GIF Export -->
+                <button class="tool-btn" id="btnToolGif" title="Export as Animated GIF">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    <span>GIF</span>
+                </button>
+
                 <!-- Delete -->
                 <button class="tool-btn danger" id="btnToolDelete" title="Delete selected clip (Delete)">
                     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -390,22 +416,65 @@
             </div>
             
             <div class="modal-body" id="modalExportForm">
+                <!-- Export Format Selection -->
+                <div class="form-group">
+                    <label>Export Format:</label>
+                    <div class="preset-buttons" id="exportFormatButtons">
+                        <button class="format-btn active" data-format="video">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="2" width="20" height="20" rx="2.18"></rect>
+                                <line x1="7" y1="2" x2="7" y2="22"></line>
+                                <line x1="17" y1="2" x2="17" y2="22"></line>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                            </svg>
+                            <span>Video (MP4/WebM)</span>
+                        </button>
+                        <button class="format-btn" data-format="gif">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M10 15V9l5 3-5 3z"></path>
+                            </svg>
+                            <span>Animated GIF (.gif)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- GIF Specific Options (Shown when GIF is chosen) -->
+                <div id="gifOptionsGroup" style="display:none;">
+                    <div class="form-group">
+                        <label>GIF Export Scope:</label>
+                        <div class="preset-buttons" id="gifScopeButtons">
+                            <button class="gif-scope-btn active" data-scope="active">Active Clip Only (Recommended)</button>
+                            <button class="gif-scope-btn" data-scope="all">Entire Project</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>GIF Frame Rate (FPS):</label>
+                        <div class="preset-buttons" id="gifFpsButtons">
+                            <button class="gif-fps-btn" data-fps="10">10 FPS (Small)</button>
+                            <button class="gif-fps-btn active" data-fps="15">15 FPS (Standard)</button>
+                            <button class="gif-fps-btn" data-fps="20">20 FPS (Smooth)</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- File Name Input -->
                 <div class="form-group">
                     <label>Export File Name:</label>
                     <div class="path-picker-row">
                         <input type="text" id="saveFileNameInput" value="Light_Video_Export.mp4">
                     </div>
-                    <small class="form-hint">The edited video will be rendered and downloaded directly to your computer.</small>
+                    <small class="form-hint" id="exportHintText">The edited video will be rendered and downloaded directly to your computer.</small>
                 </div>
 
                 <!-- Export Quality Options -->
                 <div class="form-group">
                     <label>Resolution & Quality:</label>
-                    <div class="preset-buttons">
+                    <div class="preset-buttons" id="exportResButtons">
                         <button class="quality-btn active" data-res="original">Original</button>
                         <button class="quality-btn" data-res="1080p">1080p (FHD)</button>
                         <button class="quality-btn" data-res="720p">720p (HD)</button>
+                        <button class="quality-btn" data-res="480p" style="display:none;">480p (Fast)</button>
                     </div>
                 </div>
 
@@ -477,8 +546,49 @@
             </div>
             <div class="modal-body" style="padding: 12px; background: #000; text-align: center;">
                 <video id="previewExportedVideo" controls style="max-width: 100%; max-height: 480px; border-radius: 8px;"></video>
+                <img id="previewExportedGif" style="max-width: 100%; max-height: 480px; border-radius: 8px; display:none;" alt="Exported GIF">
             </div>
         </div>
+    </div>
+
+    <!-- SNAPSHOT PREVIEW MODAL -->
+    <div class="modal-backdrop" id="snapshotModal" style="display:none;">
+        <div class="modal-card" style="max-width: 580px;">
+            <div class="modal-header">
+                <h3>Snapshot Captured</h3>
+                <button class="modal-close-btn" id="btnCloseSnapshotModal">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 16px; text-align: center;">
+                <div class="snapshot-img-container">
+                    <img id="snapshotImgPreview" src="" alt="Snapshot Preview" style="max-width: 100%; max-height: 380px; border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,0.5);">
+                </div>
+                <div class="snapshot-meta-info" id="snapshotMetaInfo" style="margin-top: 10px; font-size: 12px; color: var(--text-secondary);">
+                    <span>Time: 0:00</span> • <span>PNG Image</span>
+                </div>
+                <div class="modal-footer" style="margin-top: 16px; padding: 0; justify-content: flex-end; gap: 10px;">
+                    <button class="btn-secondary" id="btnCopySnapshot">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <span>Copy Image</span>
+                    </button>
+                    <button class="btn-primary" id="btnDownloadSnapshot">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span>Download PNG</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div class="app-toast" id="appToast">
+        <span id="toastMsg">Snapshot captured!</span>
     </div>
 
     <!-- KEYBOARD SHORTCUTS MODAL -->
@@ -491,6 +601,7 @@
             <div class="modal-body shortcuts-list">
                 <div class="shortcut-row"><kbd>Space</kbd> <span>Play / Pause</span></div>
                 <div class="shortcut-row"><kbd>C</kbd> or <kbd>S</kbd> <span>Cut / Split at needle</span></div>
+                <div class="shortcut-row"><kbd>P</kbd> <span>Take Snapshot / Screenshot</span></div>
                 <div class="shortcut-row"><kbd>R</kbd> <span>Rotate 90° Clockwise</span></div>
                 <div class="shortcut-row"><kbd>H</kbd> <span>Flip Horizontal (Mirror)</span></div>
                 <div class="shortcut-row"><kbd>Ctrl + Z</kbd> <span>Undo</span></div>
@@ -506,6 +617,7 @@
     <!-- HIDDEN FILE INPUT FOR BROWSING -->
     <input type="file" id="hiddenFileInput" accept="video/mp4,video/webm,video/ogg,video/quicktime,video/*" style="display:none;">
 
+    <script src="gif-encoder.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

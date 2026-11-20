@@ -39,7 +39,10 @@
         fitMode: 'contain',
 
         // Export settings
-        exportResolution: 'original'
+        exportResolution: 'original',
+        exportFormat: 'video', // 'video' | 'gif'
+        gifScope: 'active',    // 'active' | 'all'
+        gifFps: 15
     };
 
     // DOM Elements
@@ -47,6 +50,7 @@
     const mainVideo = document.getElementById('mainVideo');
     const videoPreviewContainer = document.getElementById('videoPreviewContainer');
     const videoFrameBox = document.getElementById('videoFrameBox');
+    const snapshotFlash = document.getElementById('snapshotFlash');
     const videoOverlayIcon = document.getElementById('videoOverlayIcon');
     const emptyState = document.getElementById('emptyState');
 
@@ -64,6 +68,7 @@
 
     const btnUndo = document.getElementById('btnUndo');
     const btnRedo = document.getElementById('btnRedo');
+    const btnSnapshot = document.getElementById('btnSnapshot');
     const btnMuteToggle = document.getElementById('btnMuteToggle');
     const iconAudioOn = document.getElementById('iconAudioOn');
     const iconAudioMuted = document.getElementById('iconAudioMuted');
@@ -78,6 +83,8 @@
     const btnToolTransform = document.getElementById('btnToolTransform');
     const btnToolCrop = document.getElementById('btnToolCrop');
     const btnToolReverse = document.getElementById('btnToolReverse');
+    const btnToolSnapshot = document.getElementById('btnToolSnapshot');
+    const btnToolGif = document.getElementById('btnToolGif');
     const btnToolDelete = document.getElementById('btnToolDelete');
 
     const toolSubpanel = document.getElementById('toolSubpanel');
@@ -127,6 +134,19 @@
     const previewModal = document.getElementById('previewModal');
     const btnClosePreviewModal = document.getElementById('btnClosePreviewModal');
     const previewExportedVideo = document.getElementById('previewExportedVideo');
+    const previewExportedGif = document.getElementById('previewExportedGif');
+
+    const snapshotModal = document.getElementById('snapshotModal');
+    const btnCloseSnapshotModal = document.getElementById('btnCloseSnapshotModal');
+    const snapshotImgPreview = document.getElementById('snapshotImgPreview');
+    const snapshotMetaInfo = document.getElementById('snapshotMetaInfo');
+    const btnCopySnapshot = document.getElementById('btnCopySnapshot');
+    const btnDownloadSnapshot = document.getElementById('btnDownloadSnapshot');
+
+    const appToast = document.getElementById('appToast');
+    const toastMsg = document.getElementById('toastMsg');
+    const gifOptionsGroup = document.getElementById('gifOptionsGroup');
+    const exportHintText = document.getElementById('exportHintText');
 
     const shortcutsModal = document.getElementById('shortcutsModal');
     const btnCloseShortcutsModal = document.getElementById('btnCloseShortcutsModal');
@@ -1175,14 +1195,129 @@
         }
     }
 
+    // --- SNAPSHOT / SCREENSHOT ENGINE ---
+    let currentSnapshotBlob = null;
+    let currentSnapshotDataUrl = null;
+
+    function showToast(message, duration = 2400) {
+        if (!appToast) return;
+        toastMsg.textContent = message;
+        appToast.classList.add('visible');
+        clearTimeout(appToast._tid);
+        appToast._tid = setTimeout(() => {
+            appToast.classList.remove('visible');
+        }, duration);
+    }
+
+    function triggerShutterFlash() {
+        if (!snapshotFlash) return;
+        snapshotFlash.classList.add('flash-active');
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                snapshotFlash.classList.remove('flash-active');
+            }, 80);
+        });
+    }
+
+    function takeSnapshot() {
+        if (!state.clips.length || !mainVideo.videoWidth) {
+            alert('Please load a video first to take a snapshot.');
+            return;
+        }
+
+        pause();
+        triggerShutterFlash();
+
+        const clip = state.clips[state.activeClipIndex];
+        let targetAspect = (mainVideo.videoWidth && mainVideo.videoHeight)
+            ? (mainVideo.videoWidth / mainVideo.videoHeight)
+            : (16 / 9);
+
+        if (state.aspectRatio === '16:9') targetAspect = 16 / 9;
+        else if (state.aspectRatio === '9:16') targetAspect = 9 / 16;
+        else if (state.aspectRatio === '1:1') targetAspect = 1.0;
+        else if (state.aspectRatio === '4:5') targetAspect = 4 / 5;
+        else if (state.aspectRatio === '21:9') targetAspect = 21 / 9;
+
+        const baseLong = Math.max(1280, Math.max(mainVideo.videoWidth || 1280, mainVideo.videoHeight || 720));
+        let canvasW, canvasH;
+        if (targetAspect >= 1) {
+            canvasW = baseLong;
+            canvasH = Math.round(baseLong / targetAspect);
+        } else {
+            canvasH = baseLong;
+            canvasW = Math.round(baseLong * targetAspect);
+        }
+        canvasW = canvasW % 2 === 0 ? canvasW : canvasW + 1;
+        canvasH = canvasH % 2 === 0 ? canvasH : canvasH + 1;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = canvasW;
+        canvas.height = canvasH;
+        const ctx = canvas.getContext('2d');
+
+        drawTransformedFrame(ctx, mainVideo, canvasW, canvasH, clip);
+
+        canvas.toBlob(blob => {
+            if (!blob) return;
+            currentSnapshotBlob = blob;
+            if (currentSnapshotDataUrl) {
+                URL.revokeObjectURL(currentSnapshotDataUrl);
+            }
+            currentSnapshotDataUrl = URL.createObjectURL(blob);
+
+            if (snapshotImgPreview) snapshotImgPreview.src = currentSnapshotDataUrl;
+            if (snapshotMetaInfo) {
+                snapshotMetaInfo.textContent = `Time: ${formatTime(state.currentTime)} (${state.currentTime.toFixed(2)}s) • ${canvasW}x${canvasH} • PNG`;
+            }
+            if (snapshotModal) snapshotModal.style.display = 'flex';
+            showToast('📸 Snapshot captured!');
+        }, 'image/png');
+    }
+
+    function closeSnapshotModal() {
+        if (snapshotModal) snapshotModal.style.display = 'none';
+    }
+
+    function downloadSnapshot() {
+        if (!currentSnapshotBlob) return;
+        const a = document.createElement('a');
+        a.href = currentSnapshotDataUrl;
+        const baseName = (state.videoName || 'Light_Video').replace(/\.[^/.]+$/, '');
+        const timeStr = formatTime(state.currentTime).replace(':', 'm') + 's';
+        a.download = `${baseName}_snapshot_${timeStr}.png`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            try { document.body.removeChild(a); } catch (e) {}
+        }, 150);
+        showToast('💾 Snapshot downloaded!');
+    }
+
+    async function copySnapshotToClipboard() {
+        if (!currentSnapshotBlob) return;
+        try {
+            if (navigator.clipboard && window.ClipboardItem) {
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': currentSnapshotBlob })
+                ]);
+                showToast('📋 Image copied to clipboard!');
+            } else {
+                showToast('Clipboard copy not supported in this browser');
+            }
+        } catch (err) {
+            console.warn('Clipboard write error:', err);
+            showToast('Could not copy to clipboard');
+        }
+    }
+
     // --- SAVE & EXPORT MODAL ---
-    function openSaveModal() {
+    function openSaveModal(defaultFormat = 'video') {
         pause();
         summaryDuration.textContent = formatTime(getTotalDuration());
         summaryClipsCount.textContent = state.clips.length;
 
-        const baseName = (state.videoName || 'Light_Video_Export').replace(/\.[^/.]+$/, '');
-        saveFileNameInput.value = `${baseName}_edited.mp4`;
+        setExportFormat(defaultFormat === 'gif' ? 'gif' : 'video');
 
         modalExportForm.style.display = 'block';
         modalExportProgress.style.display = 'none';
@@ -1190,10 +1325,37 @@
         document.querySelector('.progress-spinner-box').style.display = 'flex';
         progressBarFill.style.width = '0%';
         progressPercent.textContent = '0%';
-        progressStatusTitle.textContent = 'Exporting Video...';
-        progressStatusDesc.textContent = 'Applying cuts, speed adjustments and rendering frames';
 
         saveModal.style.display = 'flex';
+    }
+
+    function setExportFormat(format) {
+        state.exportFormat = format;
+        document.querySelectorAll('.format-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.format === format);
+        });
+
+        const isGif = format === 'gif';
+        if (gifOptionsGroup) {
+            gifOptionsGroup.style.display = isGif ? 'block' : 'none';
+        }
+
+        const baseName = (state.videoName || 'Light_Video_Export').replace(/\.[^/.]+$/, '');
+        if (isGif) {
+            saveFileNameInput.value = `${baseName}_animation.gif`;
+            if (exportHintText) exportHintText.textContent = 'The animated GIF will be rendered frame-by-frame and downloaded directly.';
+            const btnSpan = btnConfirmExport.querySelector('span');
+            if (btnSpan) btnSpan.textContent = 'Render & Export GIF';
+            const btn480 = document.querySelector('.quality-btn[data-res="480p"]');
+            if (btn480) btn480.style.display = 'inline-block';
+        } else {
+            saveFileNameInput.value = `${baseName}_edited.mp4`;
+            if (exportHintText) exportHintText.textContent = 'The edited video will be rendered and downloaded directly to your computer.';
+            const btnSpan = btnConfirmExport.querySelector('span');
+            if (btnSpan) btnSpan.textContent = 'Render & Export';
+            const btn480 = document.querySelector('.quality-btn[data-res="480p"]');
+            if (btn480) btn480.style.display = 'none';
+        }
     }
 
     function closeSaveModal() {
@@ -1261,24 +1423,29 @@
         exportCompleteActions.style.display = 'none';
         document.querySelector('.progress-spinner-box').style.display = 'flex';
 
-        updateExportProgress(0, 'Initializing web media compositor...');
+        const isGif = state.exportFormat === 'gif';
+        progressStatusTitle.textContent = isGif ? 'Exporting Animated GIF...' : 'Exporting Video...';
+        progressStatusDesc.textContent = isGif ? 'Capturing frames and compressing GIF...' : 'Applying cuts, speed adjustments and rendering frames';
+        updateExportProgress(0, isGif ? 'Initializing GIF encoder...' : 'Initializing web media compositor...');
 
         try {
             const exportPayload = {
                 clips: state.clips,
                 resolution: state.exportResolution,
-                fileName: saveFileNameInput.value || 'Light_Video_Export.mp4'
+                fileName: saveFileNameInput.value || (isGif ? 'Light_Animation.gif' : 'Light_Video_Export.mp4'),
+                gifScope: state.gifScope,
+                gifFps: state.gifFps
             };
 
-            const result = await renderAndExportVideo(exportPayload, (pct, status) => {
-                updateExportProgress(pct, status);
-            });
+            const result = isGif
+                ? await renderAndExportGif(exportPayload, (pct, status) => updateExportProgress(pct, status))
+                : await renderAndExportVideo(exportPayload, (pct, status) => updateExportProgress(pct, status));
 
             onExportFinished(result);
         } catch (err) {
             console.error('Export failed:', err);
             progressStatusTitle.textContent = 'Export Error';
-            progressStatusDesc.textContent = err.message || 'Could not export video in this browser.';
+            progressStatusDesc.textContent = err.message || 'Could not export in this browser.';
             document.querySelector('.progress-spinner-box').style.display = 'none';
         }
     }
@@ -1537,6 +1704,123 @@
         return { blob: recordedBlob, mimeType };
     }
 
+    async function renderAndExportGif(payload, onProgress) {
+        const { clips, resolution, gifScope, gifFps } = payload;
+        if (!clips || !clips.length) throw new Error('No clips to export.');
+
+        const targetClips = (gifScope === 'active' && clips[state.activeClipIndex])
+            ? [clips[state.activeClipIndex]]
+            : clips;
+
+        let totalDur = 0;
+        targetClips.forEach(c => {
+            const rawDur = Math.max(0.05, c.sourceEnd - c.sourceStart);
+            totalDur += rawDur / (c.speed || 1.0);
+        });
+
+        const fps = Math.max(5, Math.min(30, gifFps || 15));
+        const frameInterval = 1 / fps;
+        const delayMs = Math.round(1000 / fps);
+
+        let targetAspect = (mainVideo.videoWidth && mainVideo.videoHeight)
+            ? (mainVideo.videoWidth / mainVideo.videoHeight)
+            : (16 / 9);
+
+        if (state.aspectRatio === '16:9') targetAspect = 16 / 9;
+        else if (state.aspectRatio === '9:16') targetAspect = 9 / 16;
+        else if (state.aspectRatio === '1:1') targetAspect = 1.0;
+        else if (state.aspectRatio === '4:5') targetAspect = 4 / 5;
+        else if (state.aspectRatio === '21:9') targetAspect = 21 / 9;
+
+        // Size optimized for GIF
+        let baseLong = 480;
+        if (resolution === '720p') baseLong = 720;
+        else if (resolution === '360p') baseLong = 360;
+
+        let width, height;
+        if (targetAspect >= 1) {
+            width = baseLong;
+            height = Math.round(baseLong / targetAspect);
+        } else {
+            height = baseLong;
+            width = Math.round(baseLong * targetAspect);
+        }
+        width = width % 2 === 0 ? width : width + 1;
+        height = height % 2 === 0 ? height : height + 1;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        const exportVid = document.createElement('video');
+        exportVid.playsInline = true;
+        exportVid.preload = 'auto';
+        exportVid.muted = true;
+        if (state.videoSrc && !state.videoSrc.startsWith('blob:') && !state.videoSrc.startsWith('data:')) {
+            try { exportVid.crossOrigin = 'anonymous'; } catch (e) {}
+        }
+        exportVid.src = state.videoSrc;
+        try { exportVid.load(); } catch (e) {}
+
+        if (exportVid.readyState < 1) {
+            await new Promise(resolve => {
+                let resolved = false;
+                const finish = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    exportVid.removeEventListener('loadedmetadata', finish);
+                    exportVid.removeEventListener('error', finish);
+                    if (tid) clearTimeout(tid);
+                    resolve();
+                };
+                const tid = setTimeout(finish, 2000);
+                exportVid.addEventListener('loadedmetadata', finish, { once: true });
+                exportVid.addEventListener('error', finish, { once: true });
+            });
+        }
+
+        const encoder = new window.GIFEncoder(width, height);
+        const totalFrames = Math.max(1, Math.round(totalDur * fps));
+        let frameCount = 0;
+
+        for (let i = 0; i < targetClips.length; i++) {
+            const clip = targetClips[i];
+            const effDur = Math.max(0.05, (clip.sourceEnd - clip.sourceStart) / (clip.speed || 1.0));
+            const clipFrames = Math.max(1, Math.round(effDur * fps));
+
+            for (let f = 0; f < clipFrames; f++) {
+                const ratio = f / clipFrames;
+                const sourceTime = clip.reverse
+                    ? clip.sourceEnd - ratio * (clip.sourceEnd - clip.sourceStart)
+                    : clip.sourceStart + ratio * (clip.sourceEnd - clip.sourceStart);
+
+                await safeSeek(exportVid, sourceTime);
+                drawTransformedFrame(ctx, exportVid, width, height, clip);
+
+                const imgData = ctx.getImageData(0, 0, width, height);
+                encoder.addFrame(imgData.data, delayMs);
+
+                frameCount++;
+                const progress = Math.min(99, Math.round((frameCount / totalFrames) * 100));
+                if (onProgress) {
+                    onProgress(progress, `Encoding GIF frame ${frameCount} of ${totalFrames} (${progress}%)...`);
+                }
+
+                // Yield briefly to event loop so browser stays responsive
+                await new Promise(r => setTimeout(r, 4));
+            }
+        }
+
+        exportVid.src = '';
+        if (onProgress) onProgress(99, 'Finalizing GIF compression...');
+        await new Promise(r => setTimeout(r, 20));
+
+        const gifBlob = encoder.finish();
+        if (onProgress) onProgress(100, 'GIF Export complete!');
+        return { blob: gifBlob, mimeType: 'image/gif' };
+    }
+
     function updateExportProgress(percent, desc) {
         progressBarFill.style.width = `${percent}%`;
         progressPercent.textContent = `${Math.round(percent)}%`;
@@ -1552,9 +1836,14 @@
         }
         exportedBlobUrl = URL.createObjectURL(blob);
 
+        const isGif = mimeType.toLowerCase().includes('gif');
         const isMp4 = mimeType.toLowerCase().includes('mp4');
-        let currentName = (saveFileNameInput.value || 'Light_Video_Export').trim();
-        if (isMp4) {
+        let currentName = (saveFileNameInput.value || (isGif ? 'Light_Animation.gif' : 'Light_Video_Export.mp4')).trim();
+        if (isGif) {
+            if (!currentName.toLowerCase().endsWith('.gif')) {
+                currentName = currentName.replace(/\.[^/.]+$/, '') + '.gif';
+            }
+        } else if (isMp4) {
             if (!currentName.toLowerCase().endsWith('.mp4')) {
                 currentName = currentName.replace(/\.[^/.]+$/, '') + '.mp4';
             }
@@ -1567,8 +1856,9 @@
 
         progressBarFill.style.width = '100%';
         progressPercent.textContent = '100%';
-        progressStatusTitle.textContent = 'Export Complete!';
-        progressStatusDesc.textContent = `Video rendered successfully (${isMp4 ? 'MP4' : 'WebM'}, ${formatBytes(blob.size)}). Ready to download.`;
+        progressStatusTitle.textContent = isGif ? 'GIF Export Complete!' : 'Export Complete!';
+        const formatLabel = isGif ? 'GIF' : (isMp4 ? 'MP4' : 'WebM');
+        progressStatusDesc.textContent = `${isGif ? 'Animated GIF' : 'Video'} rendered successfully (${formatLabel}, ${formatBytes(blob.size)}). Ready to download.`;
         exportCompleteActions.style.display = 'flex';
         document.querySelector('.progress-spinner-box').style.display = 'none';
 
@@ -1740,18 +2030,59 @@
             pushHistory('Reset Volume 100%');
         });
 
-        btnTopSave.addEventListener('click', openSaveModal);
+        btnTopSave.addEventListener('click', () => openSaveModal('video'));
         btnCloseSaveModal.addEventListener('click', closeSaveModal);
         btnCancelSave.addEventListener('click', closeSaveModal);
         btnConfirmExport.addEventListener('click', startExport);
         btnDoneExport.addEventListener('click', closeSaveModal);
         btnDownloadExported.addEventListener('click', triggerBrowserDownload);
 
+        if (btnSnapshot) btnSnapshot.addEventListener('click', takeSnapshot);
+        if (btnToolSnapshot) btnToolSnapshot.addEventListener('click', takeSnapshot);
+        if (btnToolGif) btnToolGif.addEventListener('click', () => openSaveModal('gif'));
+
+        if (btnCloseSnapshotModal) btnCloseSnapshotModal.addEventListener('click', closeSnapshotModal);
+        if (btnDownloadSnapshot) btnDownloadSnapshot.addEventListener('click', downloadSnapshot);
+        if (btnCopySnapshot) btnCopySnapshot.addEventListener('click', copySnapshotToClipboard);
+
+        document.querySelectorAll('.format-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                setExportFormat(btn.dataset.format);
+            });
+        });
+
+        document.querySelectorAll('.gif-scope-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.gif-scope-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.gifScope = btn.dataset.scope;
+            });
+        });
+
+        document.querySelectorAll('.gif-fps-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.gif-fps-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.gifFps = parseInt(btn.dataset.fps, 10) || 15;
+            });
+        });
+
         btnPlayExportedVideo.addEventListener('click', () => {
             if (exportedBlobUrl) {
-                previewExportedVideo.src = exportedBlobUrl;
+                const isGif = state.exportFormat === 'gif';
+                if (isGif) {
+                    previewExportedVideo.style.display = 'none';
+                    if (previewExportedGif) {
+                        previewExportedGif.src = exportedBlobUrl;
+                        previewExportedGif.style.display = 'inline-block';
+                    }
+                } else {
+                    if (previewExportedGif) previewExportedGif.style.display = 'none';
+                    previewExportedVideo.src = exportedBlobUrl;
+                    previewExportedVideo.style.display = 'inline-block';
+                    previewExportedVideo.play();
+                }
                 previewModal.style.display = 'flex';
-                previewExportedVideo.play();
             }
         });
 
@@ -1789,6 +2120,9 @@
                 e.preventDefault();
                 cutAtNeedle();
             }
+        } else if (e.code === 'KeyP' && !e.ctrlKey) {
+            e.preventDefault();
+            takeSnapshot();
         } else if (e.code === 'KeyR' && !e.ctrlKey) {
             e.preventDefault();
             rotateActiveClip();

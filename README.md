@@ -39,6 +39,8 @@ Runs 100% on the client side with zero server dependencies, keeping your media c
 - **⚡ Speed Control (10% to 200%):** Fine-tune playback speed from extreme slow-mo (10%) to hyperlapse (200%) with step buttons and quick presets.
 - **🔊 Volume Adjustment:** Boost or mute clip volume from 0% to 200%.
 - **🔁 Reverse Clip Playback:** 1-click toggle to play any clip in reverse.
+- **📸 Take Snapshot / Screenshot:** Capture instant high-resolution frame snapshots at the playhead position with all rotations, flips, and framing intact. Includes 1-click PNG download and direct copy-to-clipboard (Shortcut: `P`).
+- **🎞️ Animated GIF Export:** Export any fun segment, active clip, or entire video directly as an animated `.gif` file with custom FPS (10, 15, 20) and resolution controls.
 - **💾 Real Video Compositor & Export:** Renders your final timeline into MP4 or WebM directly in the browser using HTML5 Canvas + Web Audio API + MediaRecorder.
 - **↩️ Undo / Redo:** Full history stack (`Ctrl + Z`, `Ctrl + Y`) for every action.
 - **📂 Drag & Drop:** Effortlessly drop any video file (`.mp4`, `.webm`, `.mov`) into the browser to begin editing immediately.
@@ -51,6 +53,7 @@ Runs 100% on the client side with zero server dependencies, keeping your media c
 |:---|:---|
 | <kbd>Space</kbd> | Play / Pause playback |
 | <kbd>C</kbd> or <kbd>S</kbd> | Cut / Split clip at needle position |
+| <kbd>P</kbd> | Take Snapshot / Screenshot at needle |
 | <kbd>R</kbd> | Rotate active clip 90° Clockwise |
 | <kbd>H</kbd> | Flip Horizontal (Mirror) active clip |
 | <kbd>Ctrl + Z</kbd> | Undo last action |

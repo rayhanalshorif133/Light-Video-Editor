@@ -1221,3 +1221,117 @@ body {
     from { transform: scale(0.95); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
 }
+
+/* CAMERA SNAPSHOT FLASH EFFECT */
+.snapshot-flash {
+    position: absolute;
+    inset: 0;
+    background-color: #ffffff;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 50;
+    transition: opacity 0.08s ease-out;
+}
+
+.snapshot-flash.flash-active {
+    opacity: 0.85;
+    transition: none;
+}
+
+/* FORMAT SELECTION PILLS (Video vs GIF) */
+.format-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background-color: #27272e;
+    color: #e0e0e0;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    user-select: none;
+}
+
+.format-btn:hover {
+    background-color: #383844;
+    color: #ffffff;
+}
+
+.format-btn.active {
+    background-color: var(--accent-yellow);
+    color: #000000;
+    font-weight: 700;
+    border-color: var(--accent-yellow);
+}
+
+.format-btn svg {
+    stroke: currentColor;
+}
+
+/* GIF SCOPE & FPS BUTTONS */
+.gif-scope-btn, .gif-fps-btn {
+    flex: 1;
+    padding: 8px 10px;
+    background-color: #27272e;
+    color: #dcdce2;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    text-align: center;
+}
+
+.gif-scope-btn:hover, .gif-fps-btn:hover {
+    background-color: #383844;
+    color: #ffffff;
+}
+
+.gif-scope-btn.active, .gif-fps-btn.active {
+    background-color: #ffffff;
+    color: #000000;
+    font-weight: 700;
+}
+
+/* SNAPSHOT PREVIEW MODAL */
+.snapshot-img-container {
+    background: #000000;
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* APP FLOATING TOAST */
+.app-toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(20, 20, 28, 0.94);
+    color: #ffffff;
+    padding: 10px 20px;
+    border-radius: 24px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    pointer-events: none;
+    opacity: 0;
+    z-index: 9999;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.app-toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
