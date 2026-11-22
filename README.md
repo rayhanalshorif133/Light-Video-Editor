@@ -25,6 +25,9 @@ Runs 100% on the client side with zero server dependencies, keeping your media c
 ## ✨ Features & Capabilities
 
 - **⚡ 100% In-Browser & Private:** Zero video uploads to external servers. All cuts, transforms, audio processing, and rendering happen right inside your browser.
+- **🔗 Multi-Video Clip Import & Merge:** Add multiple video files onto the timeline via `+ Add Clip` or drag-and-drop, and seamlessly merge/stitch them into one continuous video file upon export.
+- **🔀 Drag & Drop Timeline Reorder:** Effortlessly reorder clips on the timeline by dragging them with the mouse, touch handle, or using quick keyboard shortcuts (`Alt + ← / →`).
+- **📑 1-Click Clip Duplication:** Clone/duplicate any selected clip with all current crop, zoom, speed, rotation, flip, and volume settings preserved (`Duplicate` button or `D`).
 - **✂️ Precision Cut & Split:** Cut or split video clips exactly at the center needle playhead position using the `][ Cut` button or keyboard shortcuts (`C` or `S`).
 - **🎚️ Multi-Clip Timeline Filmstrip:** Real-time thumbnail preview extraction across every clip in the timeline with auto-caching.
 - **🔄 Rotate & Flip:**
@@ -53,6 +56,8 @@ Runs 100% on the client side with zero server dependencies, keeping your media c
 |:---|:---|
 | <kbd>Space</kbd> | Play / Pause playback |
 | <kbd>C</kbd> or <kbd>S</kbd> | Cut / Split clip at needle position |
+| <kbd>D</kbd> | Duplicate active clip |
+| <kbd>Alt + &larr;</kbd> / <kbd>Alt + &rarr;</kbd> | Move / Reorder active clip left / right |
 | <kbd>P</kbd> | Take Snapshot / Screenshot at needle |
 | <kbd>R</kbd> | Rotate active clip 90° Clockwise |
 | <kbd>H</kbd> | Flip Horizontal (Mirror) active clip |
@@ -60,7 +65,8 @@ Runs 100% on the client side with zero server dependencies, keeping your media c
 | <kbd>Ctrl + Y</kbd> | Redo action |
 | <kbd>Delete</kbd> / <kbd>Backspace</kbd> | Delete active clip |
 | <kbd>Ctrl + S</kbd> | Open Save & Export modal |
-| <kbd>Ctrl + O</kbd> | Open file dialog to load video |
+| <kbd>Ctrl + O</kbd> | Open / Replace video |
+| <kbd>Ctrl + Shift + O</kbd> | Add video clip to merge |
 | <kbd>&larr;</kbd> / <kbd>&rarr;</kbd> | Step playhead 0.1s backward / forward |
 
 ---

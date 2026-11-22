@@ -75,9 +75,11 @@
     const btnShortcuts = document.getElementById('btnShortcuts');
     const btnTopSave = document.getElementById('btnTopSave');
     const btnAddMedia = document.getElementById('btnAddMedia');
+    const btnAddClip = document.getElementById('btnAddClip');
 
-    const btnBackTool = document.getElementById('btnBackTool');
+    const btnToolAddClip = document.getElementById('btnToolAddClip');
     const btnCut = document.getElementById('btnCut');
+    const btnToolDuplicate = document.getElementById('btnToolDuplicate');
     const btnToolSpeed = document.getElementById('btnToolSpeed');
     const btnToolVolume = document.getElementById('btnToolVolume');
     const btnToolTransform = document.getElementById('btnToolTransform');
@@ -86,6 +88,10 @@
     const btnToolSnapshot = document.getElementById('btnToolSnapshot');
     const btnToolGif = document.getElementById('btnToolGif');
     const btnToolDelete = document.getElementById('btnToolDelete');
+
+    const bottomToolbar = document.getElementById('bottomToolbar');
+    const btnSlideToolbarLeft = document.getElementById('btnSlideToolbarLeft');
+    const btnSlideToolbarRight = document.getElementById('btnSlideToolbarRight');
 
     const toolSubpanel = document.getElementById('toolSubpanel');
     const panelSpeed = document.getElementById('panelSpeed');
@@ -154,6 +160,7 @@
     const btnOpenVideoPrompt = document.getElementById('btnOpenVideoPrompt');
     const btnLoadSamplePrompt = document.getElementById('btnLoadSamplePrompt');
     const hiddenFileInput = document.getElementById('hiddenFileInput');
+    const hiddenAddClipInput = document.getElementById('hiddenAddClipInput');
 
     const statusText = document.getElementById('statusText');
     const statusRes = document.getElementById('statusRes');
@@ -163,33 +170,32 @@
 
     // --- CLIENT-SIDE THUMBNAIL CACHE & EXTRACTOR ---
     const thumbCache = new Map();
-    let thumbExtractorVideo = null;
+    const thumbExtractors = new Map();
 
-    function getThumbExtractorVideo() {
-        if (!thumbExtractorVideo) {
-            thumbExtractorVideo = document.createElement('video');
-            thumbExtractorVideo.muted = true;
-            thumbExtractorVideo.playsInline = true;
-            thumbExtractorVideo.preload = 'auto';
+    function getThumbExtractorVideo(src) {
+        src = src || state.videoSrc;
+        if (!thumbExtractors.has(src)) {
+            const vid = document.createElement('video');
+            vid.muted = true;
+            vid.playsInline = true;
+            vid.preload = 'auto';
+            if (src && !src.startsWith('blob:') && !src.startsWith('data:')) {
+                try { vid.crossOrigin = 'anonymous'; } catch (e) {}
+            }
+            vid.src = src;
+            thumbExtractors.set(src, vid);
         }
-        if (state.videoSrc && !state.videoSrc.startsWith('blob:') && !state.videoSrc.startsWith('data:')) {
-            try { thumbExtractorVideo.crossOrigin = 'anonymous'; } catch (e) {}
-        } else {
-            try { thumbExtractorVideo.removeAttribute('crossOrigin'); } catch (e) {}
-        }
-        if (thumbExtractorVideo.src !== state.videoSrc) {
-            thumbExtractorVideo.src = state.videoSrc;
-            thumbCache.clear();
-        }
-        return thumbExtractorVideo;
+        return thumbExtractors.get(src);
     }
 
-    async function extractFrameThumbnail(sourceTime) {
-        const key = sourceTime.toFixed(1);
+    async function extractFrameThumbnail(sourceTime, src, clipDuration) {
+        src = src || state.videoSrc;
+        const dur = clipDuration || state.videoDuration || 0;
+        const key = `${src}_${sourceTime.toFixed(1)}`;
         if (thumbCache.has(key)) return thumbCache.get(key);
 
         return new Promise(resolve => {
-            const vid = getThumbExtractorVideo();
+            const vid = getThumbExtractorVideo(src);
             const canvas = document.createElement('canvas');
             canvas.width = 90;
             canvas.height = 140;
@@ -219,7 +225,7 @@
             }, 1200);
 
             vid.addEventListener('seeked', onSeeked);
-            vid.currentTime = Math.max(0, Math.min(state.videoDuration || 0, sourceTime));
+            vid.currentTime = Math.max(0, Math.min(dur, sourceTime));
         });
     }
 
@@ -360,8 +366,14 @@
                 state.pixelsPerSecond = 70;
             }
 
+            mainVideo.dataset.currentSrc = url;
             state.clips = [{
                 id: 'clip_' + Date.now(),
+                videoSrc: url,
+                videoName: label || 'video.mp4',
+                videoDuration: state.videoDuration,
+                videoWidth: state.videoWidth,
+                videoHeight: state.videoHeight,
                 sourceStart: 0,
                 sourceEnd: state.videoDuration,
                 speed: 1.0,
@@ -398,6 +410,119 @@
             videoFrameBox.style.display = 'none';
             emptyState.style.display = 'flex';
         };
+    }
+
+    // --- ADD / APPEND VIDEO CLIPS FOR MERGING ---
+    async function addVideoFiles(files) {
+        if (!files || !files.length) return;
+        const fileList = Array.from(files);
+
+        // If no video loaded yet, load the first one normally
+        if (!state.clips.length || !state.videoSrc) {
+            loadWebVideoFile(fileList[0]);
+            fileList.shift();
+            if (!fileList.length) return;
+        }
+
+        pause();
+        showToast(`Adding ${fileList.length} clip(s)...`, 2000);
+
+        for (const file of fileList) {
+            await loadAndAppendClipFile(file);
+        }
+
+        pushHistory('Add Clip(s)');
+        state.activeClipIndex = state.clips.length - 1;
+        renderTimeline();
+        updateTimelinePadding();
+        updateUI();
+        seekToProjectTime(state.currentTime, true);
+        showToast(`Added! Total ${state.clips.length} clips on timeline (Ready to merge/export)`, 2800);
+    }
+
+    function loadAndAppendClipFile(file) {
+        return new Promise((resolve) => {
+            const tempVid = document.createElement('video');
+            tempVid.preload = 'metadata';
+            const blobUrl = URL.createObjectURL(file);
+            tempVid.src = blobUrl;
+
+            const finish = (success) => {
+                tempVid.removeEventListener('loadedmetadata', onLoaded);
+                tempVid.removeEventListener('error', onError);
+                if (tid) clearTimeout(tid);
+                if (success) {
+                    const duration = Math.max(0.1, tempVid.duration || 1);
+                    const newClip = {
+                        id: 'clip_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                        videoSrc: blobUrl,
+                        videoFile: file,
+                        videoName: file.name,
+                        videoDuration: duration,
+                        videoWidth: tempVid.videoWidth || state.videoWidth || 1280,
+                        videoHeight: tempVid.videoHeight || state.videoHeight || 720,
+                        sourceStart: 0,
+                        sourceEnd: duration,
+                        speed: 1.0,
+                        volume: 1.0,
+                        reverse: false,
+                        rotation: 0,
+                        flipH: false,
+                        flipV: false,
+                        zoom: 1.0,
+                        fitMode: 'contain'
+                    };
+                    state.clips.push(newClip);
+                }
+                resolve();
+            };
+
+            const onLoaded = () => finish(true);
+            const onError = () => {
+                showToast(`Could not load ${file.name}`);
+                finish(false);
+            };
+            const tid = setTimeout(() => finish(true), 4000);
+
+            tempVid.addEventListener('loadedmetadata', onLoaded, { once: true });
+            tempVid.addEventListener('error', onError, { once: true });
+        });
+    }
+
+    // --- MERGE CLIPS ---
+    function mergeAdjacentClips() {
+        if (!state.clips || state.clips.length < 2) {
+            showToast('Add at least 2 clips first to merge them! (+ Add Clip)', 2600);
+            return;
+        }
+
+        const idx = state.activeClipIndex >= 0 ? state.activeClipIndex : 0;
+        const nextIdx = idx < state.clips.length - 1 ? idx + 1 : idx - 1;
+        const minIdx = Math.min(idx, nextIdx);
+        const maxIdx = Math.max(idx, nextIdx);
+
+        const clipA = state.clips[minIdx];
+        const clipB = state.clips[maxIdx];
+
+        const srcA = clipA.videoSrc || state.videoSrc;
+        const srcB = clipB.videoSrc || state.videoSrc;
+
+        // If from the same source file and contiguous
+        if (srcA === srcB && Math.abs(clipA.sourceEnd - clipB.sourceStart) < 0.25) {
+            clipA.sourceEnd = clipB.sourceEnd;
+            state.clips.splice(maxIdx, 1);
+            state.activeClipIndex = minIdx;
+            pushHistory('Merge Adjacent Clips');
+            renderTimeline();
+            seekToProjectTime(state.currentTime, true);
+            updateUI();
+            showToast('Adjacent clips merged into 1 timeline clip!', 2500);
+            return;
+        }
+
+        // Multiple clips on timeline ready for full merge & export
+        openSaveModal('video');
+        showToast(`All ${state.clips.length} clips on timeline will be merged into 1 video!`, 3200);
     }
 
     // --- HISTORY SYSTEM (UNDO / REDO) ---
@@ -493,6 +618,13 @@
 
             generateClipThumbnails(clip, thumbsContainer, clipWidth);
 
+            const titleBadge = document.createElement('div');
+            titleBadge.className = 'clip-title-badge';
+            const shortName = clip.videoName ? clip.videoName.replace(/\.[^/.]+$/, '') : `Clip ${index + 1}`;
+            titleBadge.textContent = state.clips.length > 1 ? `#${index + 1} ${shortName}` : shortName;
+            titleBadge.title = clip.videoName || `Clip ${index + 1}`;
+            clipBox.appendChild(titleBadge);
+
             const badge = document.createElement('div');
             badge.className = 'clip-duration-badge';
             badge.textContent = `${effDur.toFixed(1)}s`;
@@ -547,8 +679,82 @@
                 clipBox.appendChild(rightHandle);
             }
 
+            // Drag handle for reordering (when multiple clips exist)
+            if (state.clips.length > 1) {
+                const dragHandle = document.createElement('div');
+                dragHandle.className = 'clip-drag-handle';
+                dragHandle.title = 'Drag to reorder clip in timeline';
+                dragHandle.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor">
+                        <circle cx="8" cy="6" r="1.5"></circle>
+                        <circle cx="16" cy="6" r="1.5"></circle>
+                        <circle cx="8" cy="12" r="1.5"></circle>
+                        <circle cx="16" cy="12" r="1.5"></circle>
+                        <circle cx="8" cy="18" r="1.5"></circle>
+                        <circle cx="16" cy="18" r="1.5"></circle>
+                    </svg>
+                    <span>Move</span>
+                `;
+                attachPointerReorderHandler(dragHandle, clipBox, index);
+                clipBox.appendChild(dragHandle);
+
+                // HTML5 Drag & Drop on desktop
+                clipBox.draggable = true;
+
+                clipBox.addEventListener('dragstart', (e) => {
+                    state.draggedClipIndex = index;
+                    try {
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', String(index));
+                    } catch (err) {}
+                    setTimeout(() => clipBox.classList.add('is-dragging'), 0);
+                });
+
+                clipBox.addEventListener('dragend', () => {
+                    clipBox.classList.remove('is-dragging');
+                    document.querySelectorAll('.clip-box').forEach(b => {
+                        b.classList.remove('drop-target-before', 'drop-target-after');
+                    });
+                    state.draggedClipIndex = null;
+                });
+
+                clipBox.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    if (state.draggedClipIndex === null || state.draggedClipIndex === index) return;
+                    try { e.dataTransfer.dropEffect = 'move'; } catch (err) {}
+
+                    const rect = clipBox.getBoundingClientRect();
+                    const isAfter = (e.clientX - rect.left) > (rect.width / 2);
+                    clipBox.classList.toggle('drop-target-after', isAfter);
+                    clipBox.classList.toggle('drop-target-before', !isAfter);
+                });
+
+                clipBox.addEventListener('dragleave', () => {
+                    clipBox.classList.remove('drop-target-before', 'drop-target-after');
+                });
+
+                clipBox.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    clipBox.classList.remove('drop-target-before', 'drop-target-after');
+                    const fromIndex = (state.draggedClipIndex !== null && state.draggedClipIndex !== undefined)
+                        ? state.draggedClipIndex
+                        : parseInt(e.dataTransfer.getData('text/plain'), 10);
+
+                    if (isNaN(fromIndex) || fromIndex === index) return;
+
+                    const rect = clipBox.getBoundingClientRect();
+                    const isAfter = (e.clientX - rect.left) > (rect.width / 2);
+                    let targetIndex = isAfter ? index + 1 : index;
+                    if (fromIndex < targetIndex) {
+                        targetIndex -= 1;
+                    }
+
+                    reorderClips(fromIndex, targetIndex);
+                });
+            }
+
             clipBox.addEventListener('click', (e) => {
-                if (e.target.classList.contains('trim-handle')) return;
+                if (e.target.classList.contains('trim-handle') || e.target.closest('.clip-drag-handle')) return;
                 setActiveClip(index);
             });
 
@@ -556,6 +762,114 @@
         });
 
         updateTimelinePadding();
+    }
+
+    // --- POINTER-BASED CLIP REORDERING (Mobile, Touch & Mouse) ---
+    function attachPointerReorderHandler(handle, clipBox, index) {
+        handle.addEventListener('pointerdown', (e) => {
+            e.stopPropagation();
+            pause();
+
+            const fromIndex = index;
+            let lastTargetIndex = null;
+            let lastInsertSide = null;
+
+            clipBox.classList.add('is-dragging');
+
+            function onPointerMove(moveEvent) {
+                const boxes = Array.from(clipsStrip.querySelectorAll('.clip-box'));
+                boxes.forEach(b => b.classList.remove('drop-target-before', 'drop-target-after'));
+
+                for (let i = 0; i < boxes.length; i++) {
+                    const b = boxes[i];
+                    const rect = b.getBoundingClientRect();
+                    if (moveEvent.clientX >= rect.left && moveEvent.clientX <= rect.right) {
+                        const isAfter = (moveEvent.clientX - rect.left) > (rect.width / 2);
+                        b.classList.toggle('drop-target-after', isAfter);
+                        b.classList.toggle('drop-target-before', !isAfter);
+                        lastTargetIndex = i;
+                        lastInsertSide = isAfter ? 'after' : 'before';
+                        break;
+                    }
+                }
+            }
+
+            function onPointerUp() {
+                clipBox.classList.remove('is-dragging');
+                document.querySelectorAll('.clip-box').forEach(b => {
+                    b.classList.remove('drop-target-before', 'drop-target-after');
+                });
+                window.removeEventListener('pointermove', onPointerMove);
+                window.removeEventListener('pointerup', onPointerUp);
+
+                if (lastTargetIndex !== null && lastTargetIndex !== fromIndex) {
+                    let toIndex = lastInsertSide === 'after' ? lastTargetIndex + 1 : lastTargetIndex;
+                    if (fromIndex < toIndex) toIndex -= 1;
+                    reorderClips(fromIndex, toIndex);
+                }
+            }
+
+            window.addEventListener('pointermove', onPointerMove);
+            window.addEventListener('pointerup', onPointerUp);
+        });
+    }
+
+    // --- REORDER CLIPS ---
+    function reorderClips(fromIndex, toIndex) {
+        if (fromIndex === toIndex || fromIndex < 0 || fromIndex >= state.clips.length) return;
+        toIndex = Math.max(0, Math.min(state.clips.length - 1, toIndex));
+
+        const [movedClip] = state.clips.splice(fromIndex, 1);
+        state.clips.splice(toIndex, 0, movedClip);
+        state.activeClipIndex = toIndex;
+
+        pushHistory(`Reorder Clip: #${fromIndex + 1} to #${toIndex + 1}`);
+        renderTimeline();
+        updateTimelinePadding();
+        updateUI();
+
+        let accumulated = 0;
+        for (let i = 0; i < toIndex; i++) {
+            accumulated += getClipEffectiveDuration(state.clips[i]);
+        }
+        seekToProjectTime(accumulated, true);
+
+        showToast(`✨ Reordered to position #${toIndex + 1}!`, 2000);
+    }
+
+    // --- DUPLICATE ACTIVE CLIP ---
+    function duplicateActiveClip() {
+        if (!state.clips || !state.clips.length || state.activeClipIndex < 0) {
+            showToast('Select a clip first to duplicate.', 2000);
+            return;
+        }
+
+        const currentClip = state.clips[state.activeClipIndex];
+        if (!currentClip) return;
+
+        pause();
+
+        const clonedClip = {
+            ...JSON.parse(JSON.stringify(currentClip)),
+            id: 'clip_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6)
+        };
+
+        const insertIndex = state.activeClipIndex + 1;
+        state.clips.splice(insertIndex, 0, clonedClip);
+        state.activeClipIndex = insertIndex;
+
+        pushHistory('Duplicate Clip');
+        renderTimeline();
+        updateTimelinePadding();
+        updateUI();
+
+        let accumulated = 0;
+        for (let i = 0; i < insertIndex; i++) {
+            accumulated += getClipEffectiveDuration(state.clips[i]);
+        }
+        seekToProjectTime(accumulated, true);
+
+        showToast('📋 Clip duplicated!', 2200);
     }
 
     function setActiveClip(index) {
@@ -583,6 +897,8 @@
         container.innerHTML = '';
         const thumbWidth = 50;
         const frameCount = Math.max(1, Math.round(width / thumbWidth));
+        const clipSrc = clip.videoSrc || state.videoSrc;
+        const clipDur = clip.videoDuration || state.videoDuration;
 
         for (let i = 0; i < frameCount; i++) {
             const frameRatio = (i + 0.5) / frameCount;
@@ -596,11 +912,11 @@
             img.draggable = false;
             img.loading = 'lazy';
 
-            const key = sourceTime.toFixed(1);
+            const key = `${clipSrc}_${sourceTime.toFixed(1)}`;
             if (thumbCache.has(key)) {
                 img.src = thumbCache.get(key);
             } else {
-                extractFrameThumbnail(sourceTime).then(dataUrl => {
+                extractFrameThumbnail(sourceTime, clipSrc, clipDur).then(dataUrl => {
                     if (dataUrl) img.src = dataUrl;
                 }).catch(() => {});
             }
@@ -631,7 +947,8 @@
                     clip.sourceStart = newStart;
                     mainVideo.currentTime = newStart;
                 } else {
-                    const newEnd = Math.min(state.videoDuration, Math.max(clip.sourceStart + 0.2, initialEnd + deltaTime));
+                    const maxDur = clip.videoDuration || state.videoDuration;
+                    const newEnd = Math.min(maxDur, Math.max(clip.sourceStart + 0.2, initialEnd + deltaTime));
                     clip.sourceEnd = newEnd;
                     mainVideo.currentTime = newEnd;
                 }
@@ -677,17 +994,33 @@
 
         const activeClip = state.clips[matchedIndex];
         if (activeClip) {
+            const clipSrc = activeClip.videoSrc || state.videoSrc;
+            const clipDur = activeClip.videoDuration || state.videoDuration;
+
             let targetSourceTime;
             if (activeClip.reverse) {
                 targetSourceTime = activeClip.sourceEnd - timeInClip;
             } else {
                 targetSourceTime = activeClip.sourceStart + timeInClip;
             }
-            targetSourceTime = Math.max(0, Math.min(state.videoDuration, targetSourceTime));
-            
-            if (!state.isPlaying || Math.abs(mainVideo.currentTime - targetSourceTime) > 0.15) {
-                mainVideo.currentTime = targetSourceTime;
+            targetSourceTime = Math.max(0, Math.min(clipDur, targetSourceTime));
+
+            if (mainVideo.dataset.currentSrc !== clipSrc) {
+                mainVideo.dataset.currentSrc = clipSrc;
+                const wasPlaying = state.isPlaying;
+                mainVideo.src = clipSrc;
+                mainVideo.onloadedmetadata = () => {
+                    mainVideo.currentTime = targetSourceTime;
+                    if (wasPlaying || state.isPlaying) {
+                        mainVideo.play().catch(() => {});
+                    }
+                };
+            } else {
+                if (!state.isPlaying || Math.abs(mainVideo.currentTime - targetSourceTime) > 0.15) {
+                    mainVideo.currentTime = targetSourceTime;
+                }
             }
+
             mainVideo.playbackRate = activeClip.speed || 1.0;
             mainVideo.volume = state.isMuted ? 0 : (activeClip.volume !== undefined ? activeClip.volume : 1.0);
         }
@@ -1315,7 +1648,11 @@
     function openSaveModal(defaultFormat = 'video') {
         pause();
         summaryDuration.textContent = formatTime(getTotalDuration());
-        summaryClipsCount.textContent = state.clips.length;
+        if (summaryClipsCount) {
+            summaryClipsCount.textContent = state.clips.length <= 1 
+                ? '1 clip' 
+                : `${state.clips.length} clips (Merged into 1 video)`;
+        }
 
         setExportFormat(defaultFormat === 'gif' ? 'gif' : 'video');
 
@@ -1349,10 +1686,14 @@
             const btn480 = document.querySelector('.quality-btn[data-res="480p"]');
             if (btn480) btn480.style.display = 'inline-block';
         } else {
-            saveFileNameInput.value = `${baseName}_edited.mp4`;
-            if (exportHintText) exportHintText.textContent = 'The edited video will be rendered and downloaded directly to your computer.';
+            saveFileNameInput.value = `${baseName}_merged.mp4`;
+            if (exportHintText) {
+                exportHintText.textContent = state.clips.length > 1
+                    ? `All ${state.clips.length} clips on your timeline will be merged and downloaded as a single video.`
+                    : 'The edited video will be rendered and downloaded directly to your computer.';
+            }
             const btnSpan = btnConfirmExport.querySelector('span');
-            if (btnSpan) btnSpan.textContent = 'Render & Export';
+            if (btnSpan) btnSpan.textContent = state.clips.length > 1 ? 'Merge & Export Video' : 'Render & Export';
             const btn480 = document.querySelector('.quality-btn[data-res="480p"]');
             if (btn480) btn480.style.display = 'none';
         }
@@ -1495,13 +1836,14 @@
             totalDur += rawDur / (c.speed || 1.0);
         });
 
+        const firstSrc = (clips[0] && clips[0].videoSrc) || state.videoSrc;
         const exportVid = document.createElement('video');
         exportVid.playsInline = true;
         exportVid.preload = 'auto';
-        if (state.videoSrc && !state.videoSrc.startsWith('blob:') && !state.videoSrc.startsWith('data:')) {
+        if (firstSrc && !firstSrc.startsWith('blob:') && !firstSrc.startsWith('data:')) {
             try { exportVid.crossOrigin = 'anonymous'; } catch (e) {}
         }
-        exportVid.src = state.videoSrc;
+        exportVid.src = firstSrc;
         exportVid.muted = false;
         try { exportVid.load(); } catch (e) {}
 
@@ -1580,10 +1922,34 @@
         recorder.start(100);
 
         let accumulatedTime = 0;
+        let currentLoadedSrc = firstSrc;
 
         for (let i = 0; i < clips.length; i++) {
             const clip = clips[i];
             const effDur = Math.max(0.05, (clip.sourceEnd - clip.sourceStart) / (clip.speed || 1.0));
+            const clipSrc = clip.videoSrc || state.videoSrc;
+
+            if (currentLoadedSrc !== clipSrc) {
+                currentLoadedSrc = clipSrc;
+                exportVid.src = clipSrc;
+                try { exportVid.load(); } catch (e) {}
+                await new Promise(resolve => {
+                    let resolved = false;
+                    const finish = () => {
+                        if (resolved) return;
+                        resolved = true;
+                        exportVid.removeEventListener('loadedmetadata', finish);
+                        exportVid.removeEventListener('canplay', finish);
+                        exportVid.removeEventListener('error', finish);
+                        if (tid) clearTimeout(tid);
+                        resolve();
+                    };
+                    const tid = setTimeout(finish, 2500);
+                    exportVid.addEventListener('loadedmetadata', finish, { once: true });
+                    exportVid.addEventListener('canplay', finish, { once: true });
+                    exportVid.addEventListener('error', finish, { once: true });
+                });
+            }
 
             if (gainNode) {
                 gainNode.gain.value = clip.volume !== undefined ? clip.volume : 1.0;
@@ -1753,14 +2119,15 @@
         canvas.height = height;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
+        const firstSrc = (targetClips[0] && targetClips[0].videoSrc) || state.videoSrc;
         const exportVid = document.createElement('video');
         exportVid.playsInline = true;
         exportVid.preload = 'auto';
         exportVid.muted = true;
-        if (state.videoSrc && !state.videoSrc.startsWith('blob:') && !state.videoSrc.startsWith('data:')) {
+        if (firstSrc && !firstSrc.startsWith('blob:') && !firstSrc.startsWith('data:')) {
             try { exportVid.crossOrigin = 'anonymous'; } catch (e) {}
         }
-        exportVid.src = state.videoSrc;
+        exportVid.src = firstSrc;
         try { exportVid.load(); } catch (e) {}
 
         if (exportVid.readyState < 1) {
@@ -1783,11 +2150,35 @@
         const encoder = new window.GIFEncoder(width, height);
         const totalFrames = Math.max(1, Math.round(totalDur * fps));
         let frameCount = 0;
+        let currentLoadedSrc = firstSrc;
 
         for (let i = 0; i < targetClips.length; i++) {
             const clip = targetClips[i];
             const effDur = Math.max(0.05, (clip.sourceEnd - clip.sourceStart) / (clip.speed || 1.0));
             const clipFrames = Math.max(1, Math.round(effDur * fps));
+            const clipSrc = clip.videoSrc || state.videoSrc;
+
+            if (currentLoadedSrc !== clipSrc) {
+                currentLoadedSrc = clipSrc;
+                exportVid.src = clipSrc;
+                try { exportVid.load(); } catch (e) {}
+                await new Promise(resolve => {
+                    let resolved = false;
+                    const finish = () => {
+                        if (resolved) return;
+                        resolved = true;
+                        exportVid.removeEventListener('loadedmetadata', finish);
+                        exportVid.removeEventListener('canplay', finish);
+                        exportVid.removeEventListener('error', finish);
+                        if (tid) clearTimeout(tid);
+                        resolve();
+                    };
+                    const tid = setTimeout(finish, 2500);
+                    exportVid.addEventListener('loadedmetadata', finish, { once: true });
+                    exportVid.addEventListener('canplay', finish, { once: true });
+                    exportVid.addEventListener('error', finish, { once: true });
+                });
+            }
 
             for (let f = 0; f < clipFrames; f++) {
                 const ratio = f / clipFrames;
@@ -1879,10 +2270,46 @@
         }, 200);
     }
 
+    // --- DUAL SLIDER NAVIGATION BUTTONS ---
+    function updateToolbarNavButtons() {
+        if (!bottomToolbar || !btnSlideToolbarLeft || !btnSlideToolbarRight) return;
+        const scrollLeft = bottomToolbar.scrollLeft;
+        const maxScroll = bottomToolbar.scrollWidth - bottomToolbar.clientWidth;
+        const hasOverflow = maxScroll > 8;
+
+        if (!hasOverflow) {
+            btnSlideToolbarLeft.style.display = 'none';
+            btnSlideToolbarRight.style.display = 'none';
+        } else {
+            btnSlideToolbarLeft.style.display = 'flex';
+            btnSlideToolbarRight.style.display = 'flex';
+            btnSlideToolbarLeft.disabled = scrollLeft <= 4;
+            btnSlideToolbarLeft.classList.toggle('disabled', scrollLeft <= 4);
+            btnSlideToolbarRight.disabled = scrollLeft >= maxScroll - 4;
+            btnSlideToolbarRight.classList.toggle('disabled', scrollLeft >= maxScroll - 4);
+        }
+    }
+
     // --- EVENT BINDINGS ---
     function bindEvents() {
         btnPlayPause.addEventListener('click', togglePlay);
         videoFrameBox.addEventListener('click', togglePlay);
+
+        if (btnSlideToolbarLeft && bottomToolbar) {
+            btnSlideToolbarLeft.addEventListener('click', () => {
+                bottomToolbar.scrollBy({ left: -220, behavior: 'smooth' });
+            });
+        }
+        if (btnSlideToolbarRight && bottomToolbar) {
+            btnSlideToolbarRight.addEventListener('click', () => {
+                bottomToolbar.scrollBy({ left: 220, behavior: 'smooth' });
+            });
+        }
+        if (bottomToolbar) {
+            bottomToolbar.addEventListener('scroll', updateToolbarNavButtons);
+            window.addEventListener('resize', updateToolbarNavButtons);
+            setTimeout(updateToolbarNavButtons, 250);
+        }
 
         btnUndo.addEventListener('click', undo);
         btnRedo.addEventListener('click', redo);
@@ -1895,6 +2322,12 @@
         });
 
         btnAddMedia.addEventListener('click', () => hiddenFileInput.click());
+        if (btnAddClip) {
+            btnAddClip.addEventListener('click', () => hiddenAddClipInput.click());
+        }
+        if (btnToolAddClip) {
+            btnToolAddClip.addEventListener('click', () => hiddenAddClipInput.click());
+        }
         btnOpenVideoPrompt.addEventListener('click', () => hiddenFileInput.click());
         if (btnLoadSamplePrompt) {
             btnLoadSamplePrompt.addEventListener('click', () => hiddenFileInput.click());
@@ -1906,6 +2339,15 @@
                 loadWebVideoFile(file);
             }
         });
+
+        if (hiddenAddClipInput) {
+            hiddenAddClipInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    addVideoFiles(e.target.files);
+                    e.target.value = '';
+                }
+            });
+        }
 
         // Drag & Drop
         window.addEventListener('dragover', (e) => {
@@ -1921,12 +2363,20 @@
             e.preventDefault();
             mobileFrame.classList.remove('drag-over');
             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                loadWebVideoFile(e.dataTransfer.files[0]);
+                if (state.clips.length > 0 && state.videoSrc) {
+                    addVideoFiles(e.dataTransfer.files);
+                } else {
+                    loadWebVideoFile(e.dataTransfer.files[0]);
+                    if (e.dataTransfer.files.length > 1) {
+                        const rest = Array.from(e.dataTransfer.files).slice(1);
+                        setTimeout(() => addVideoFiles(rest), 400);
+                    }
+                }
             }
         });
 
-        btnBackTool.addEventListener('click', closeToolDrawer);
         btnCut.addEventListener('click', cutAtNeedle);
+        if (btnToolDuplicate) btnToolDuplicate.addEventListener('click', duplicateActiveClip);
         btnToolSpeed.addEventListener('click', () => toggleToolDrawer('speed'));
         btnToolVolume.addEventListener('click', () => toggleToolDrawer('volume'));
         btnToolTransform.addEventListener('click', () => toggleToolDrawer('transform'));
@@ -2120,6 +2570,9 @@
                 e.preventDefault();
                 cutAtNeedle();
             }
+        } else if (e.code === 'KeyD' && !e.altKey && !e.shiftKey) {
+            e.preventDefault();
+            duplicateActiveClip();
         } else if (e.code === 'KeyP' && !e.ctrlKey) {
             e.preventDefault();
             takeSnapshot();
@@ -2141,17 +2594,32 @@
         } else if (e.ctrlKey && e.code === 'KeyS') {
             e.preventDefault();
             openSaveModal();
+        } else if (e.ctrlKey && e.shiftKey && e.code === 'KeyO') {
+            e.preventDefault();
+            if (hiddenAddClipInput) hiddenAddClipInput.click();
         } else if (e.ctrlKey && e.code === 'KeyO') {
             e.preventDefault();
             hiddenFileInput.click();
         } else if (e.code === 'ArrowLeft') {
             e.preventDefault();
             pause();
-            seekToProjectTime(state.currentTime - 0.1, true);
+            if (e.altKey) {
+                if (state.activeClipIndex > 0) {
+                    reorderClips(state.activeClipIndex, state.activeClipIndex - 1);
+                }
+            } else {
+                seekToProjectTime(state.currentTime - 0.1, true);
+            }
         } else if (e.code === 'ArrowRight') {
             e.preventDefault();
             pause();
-            seekToProjectTime(state.currentTime + 0.1, true);
+            if (e.altKey) {
+                if (state.activeClipIndex < state.clips.length - 1) {
+                    reorderClips(state.activeClipIndex, state.activeClipIndex + 1);
+                }
+            } else {
+                seekToProjectTime(state.currentTime + 0.1, true);
+            }
         }
     }
 

@@ -66,13 +66,22 @@
                     </button>
 
                     <!-- Open Video File Button -->
-                    <button class="btn-text-header" id="btnAddMedia" title="Open any video from your device (Ctrl+O)">
+                    <button class="btn-text-header" id="btnAddMedia" title="Open / Replace video from your device (Ctrl+O)">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                             <polyline points="17 8 12 3 7 8"></polyline>
                             <line x1="12" y1="3" x2="12" y2="15"></line>
                         </svg>
                         <span>Open Video</span>
+                    </button>
+
+                    <!-- Add Clip (Merge Videos) Button -->
+                    <button class="btn-text-header" id="btnAddClip" title="Add another clip to merge into video (Ctrl+Shift+O)">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>+ Add Clip</span>
                     </button>
 
                     <!-- Save / Export Button -->
@@ -297,98 +306,124 @@
                 </div>
             </div>
 
-            <!-- BOTTOM ACTION TOOLBAR (As in demo.jpeg) -->
-            <footer class="bottom-toolbar">
-                <!-- Back / Collapse Chevron -->
-                <button class="tool-btn" id="btnBackTool" title="Collapse / Back">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <!-- BOTTOM ACTION TOOLBAR WITH DUAL SLIDER BUTTONS -->
+            <div class="bottom-toolbar-container">
+                <!-- Slide Left Button -->
+                <button class="toolbar-nav-btn nav-left" id="btnSlideToolbarLeft" title="Slide tools left" aria-label="Slide tools left">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
-                    <span>Back</span>
                 </button>
 
-                <!-- Cut / Split -->
-                <button class="tool-btn" id="btnCut" title="Cut / Split clip at needle position (C or S)">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M6 3v18"></path>
-                        <path d="M18 3v18"></path>
-                        <line x1="6" y1="12" x2="18" y2="12"></line>
-                    </svg>
-                    <span>][ Cut</span>
-                </button>
+                <footer class="bottom-toolbar" id="bottomToolbar">
+                    <!-- Add Clip (Merge Videos) -->
+                    <button class="tool-btn" id="btnToolAddClip" title="Add another clip to merge into video (Ctrl+Shift+O)">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>+ Add Clip</span>
+                    </button>
 
-                <!-- Speed -->
-                <button class="tool-btn" id="btnToolSpeed" title="Change Playback Speed">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="9"></circle>
-                        <polyline points="12 6 12 12 15 15"></polyline>
-                    </svg>
-                    <span>Speed</span>
-                </button>
+                    <!-- Cut / Split -->
+                    <button class="tool-btn" id="btnCut" title="Cut / Split clip at needle position (C or S)">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 3v18"></path>
+                            <path d="M18 3v18"></path>
+                            <line x1="6" y1="12" x2="18" y2="12"></line>
+                        </svg>
+                        <span>][ Cut</span>
+                    </button>
 
-                <!-- Volume -->
-                <button class="tool-btn" id="btnToolVolume" title="Adjust Volume">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                    </svg>
-                    <span>Volume</span>
-                </button>
+                    <!-- Duplicate Clip -->
+                    <button class="tool-btn" id="btnToolDuplicate" title="Duplicate selected clip (D)">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <span>Duplicate</span>
+                    </button>
 
-                <!-- Rotate & Flip -->
-                <button class="tool-btn" id="btnToolTransform" title="Rotate & Flip (R or H)">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-1.19"></path>
-                    </svg>
-                    <span>Rotate</span>
-                </button>
+                    <!-- Speed -->
+                    <button class="tool-btn" id="btnToolSpeed" title="Change Playback Speed">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="9"></circle>
+                            <polyline points="12 6 12 12 15 15"></polyline>
+                        </svg>
+                        <span>Speed</span>
+                    </button>
 
-                <!-- Crop & Fit -->
-                <button class="tool-btn" id="btnToolCrop" title="Crop, Fit & Aspect Ratio">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M6 2v14a2 2 0 0 0 2 2h14"></path>
-                        <path d="M18 22V8a2 2 0 0 0-2-2H2"></path>
-                    </svg>
-                    <span>Crop & Fit</span>
-                </button>
+                    <!-- Volume -->
+                    <button class="tool-btn" id="btnToolVolume" title="Adjust Volume">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
+                        <span>Volume</span>
+                    </button>
 
-                <!-- Reverse -->
-                <button class="tool-btn" id="btnToolReverse" title="Toggle Clip Reverse">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="1 4 1 10 7 10"></polyline>
-                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
-                    </svg>
-                    <span>Reverse</span>
-                </button>
+                    <!-- Rotate & Flip -->
+                    <button class="tool-btn" id="btnToolTransform" title="Rotate & Flip (R or H)">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-1.19"></path>
+                        </svg>
+                        <span>Rotate</span>
+                    </button>
 
-                <!-- Snapshot -->
-                <button class="tool-btn" id="btnToolSnapshot" title="Take Snapshot / Screenshot (P)">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                        <circle cx="12" cy="13" r="4"></circle>
-                    </svg>
-                    <span>Snapshot</span>
-                </button>
+                    <!-- Crop & Fit -->
+                    <button class="tool-btn" id="btnToolCrop" title="Crop, Fit & Aspect Ratio">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 2v14a2 2 0 0 0 2 2h14"></path>
+                            <path d="M18 22V8a2 2 0 0 0-2-2H2"></path>
+                        </svg>
+                        <span>Crop & Fit</span>
+                    </button>
 
-                <!-- GIF Export -->
-                <button class="tool-btn" id="btnToolGif" title="Export as Animated GIF">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                        <polyline points="21 15 16 10 5 21"></polyline>
-                    </svg>
-                    <span>GIF</span>
-                </button>
+                    <!-- Reverse -->
+                    <button class="tool-btn" id="btnToolReverse" title="Toggle Clip Reverse">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="1 4 1 10 7 10"></polyline>
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                        </svg>
+                        <span>Reverse</span>
+                    </button>
 
-                <!-- Delete -->
-                <button class="tool-btn danger" id="btnToolDelete" title="Delete selected clip (Delete)">
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <!-- Snapshot -->
+                    <button class="tool-btn" id="btnToolSnapshot" title="Take Snapshot / Screenshot (P)">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                        </svg>
+                        <span>Snapshot</span>
+                    </button>
+
+                    <!-- GIF Export -->
+                    <button class="tool-btn" id="btnToolGif" title="Export as Animated GIF">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <span>GIF</span>
+                    </button>
+
+                    <!-- Delete -->
+                    <button class="tool-btn danger" id="btnToolDelete" title="Delete selected clip (Delete)">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        <span>Delete</span>
+                    </button>
+                </footer>
+
+                <!-- Slide Right Button -->
+                <button class="toolbar-nav-btn nav-right" id="btnSlideToolbarRight" title="Slide tools right" aria-label="Slide tools right">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
-                    <span>Delete</span>
                 </button>
-            </footer>
+            </div>
 
             <!-- BOTTOM STATUS FOOTER -->
             <div class="status-footer">
@@ -601,6 +636,8 @@
             <div class="modal-body shortcuts-list">
                 <div class="shortcut-row"><kbd>Space</kbd> <span>Play / Pause</span></div>
                 <div class="shortcut-row"><kbd>C</kbd> or <kbd>S</kbd> <span>Cut / Split at needle</span></div>
+                <div class="shortcut-row"><kbd>D</kbd> <span>Duplicate active clip</span></div>
+                <div class="shortcut-row"><kbd>Alt + &larr;</kbd> / <kbd>Alt + &rarr;</kbd> <span>Reorder clip Left / Right</span></div>
                 <div class="shortcut-row"><kbd>P</kbd> <span>Take Snapshot / Screenshot</span></div>
                 <div class="shortcut-row"><kbd>R</kbd> <span>Rotate 90° Clockwise</span></div>
                 <div class="shortcut-row"><kbd>H</kbd> <span>Flip Horizontal (Mirror)</span></div>
@@ -608,7 +645,8 @@
                 <div class="shortcut-row"><kbd>Ctrl + Y</kbd> <span>Redo</span></div>
                 <div class="shortcut-row"><kbd>Delete</kbd> <span>Delete active clip</span></div>
                 <div class="shortcut-row"><kbd>Ctrl + S</kbd> <span>Save / Export</span></div>
-                <div class="shortcut-row"><kbd>Ctrl + O</kbd> <span>Open Video</span></div>
+                <div class="shortcut-row"><kbd>Ctrl + O</kbd> <span>Open / Replace Video</span></div>
+                <div class="shortcut-row"><kbd>Ctrl + Shift + O</kbd> <span>Add Clip to Merge</span></div>
                 <div class="shortcut-row"><kbd>&larr;</kbd> / <kbd>&rarr;</kbd> <span>Step 0.1s backward / forward</span></div>
             </div>
         </div>
@@ -616,6 +654,7 @@
 
     <!-- HIDDEN FILE INPUT FOR BROWSING -->
     <input type="file" id="hiddenFileInput" accept="video/mp4,video/webm,video/ogg,video/quicktime,video/*" style="display:none;">
+    <input type="file" id="hiddenAddClipInput" accept="video/mp4,video/webm,video/ogg,video/quicktime,video/*" multiple style="display:none;">
 
     <script src="gif-encoder.js"></script>
     <script src="app.js"></script>
