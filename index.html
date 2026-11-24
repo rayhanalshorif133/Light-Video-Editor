@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Light Video Editor - Web Studio</title>
     <meta name="description" content="Fast, lightweight, and modern in-browser video editor. 100% client-side with precision cutting, speed adjustments, rotate & flip, crop & fit, and instant video export.">
     
@@ -122,6 +122,18 @@
                                 <div class="crop-grid-h crop-grid-h2"></div>
                                 <div class="crop-grid-v crop-grid-v1"></div>
                                 <div class="crop-grid-v crop-grid-v2"></div>
+
+                                <!-- EXACT CENTER AUTO-CROP BUTTON ON SCREEN -->
+                                <button class="crop-screen-center-btn" id="btnScreenCenterAutoCrop" title="Auto crop video into exact 1080×1920 center">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="9"></circle>
+                                        <line x1="12" y1="3" x2="12" y2="7"></line>
+                                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                                        <line x1="3" y1="12" x2="7" y2="12"></line>
+                                        <line x1="17" y1="12" x2="21" y2="12"></line>
+                                    </svg>
+                                    <span>Auto Center Crop (1080×1920)</span>
+                                </button>
 
                                 <div class="crop-info-tag" id="cropInfoTag">Square (1:1)</div>
 
@@ -315,6 +327,25 @@
                         <span>Aspect Ratio & Fit Mode</span>
                         <span class="subpanel-val" id="cropValBadge">Original • Fit</span>
                     </div>
+
+                    <!-- 1080x1920 PORTRAIT VIEWPORT & AUTO-CENTER CROP SETTING -->
+                    <div class="viewport-crop-center-box">
+                        <div class="viewport-crop-center-info">
+                            <span class="viewport-indicator-dot"></span>
+                            <span class="viewport-title">Viewport & Layout: <strong>1080 × 1920 (Portrait 9:16)</strong></span>
+                        </div>
+                        <button class="btn-auto-center-crop" id="btnAutoCenterCrop" title="Auto crop video into 1080×1920 center">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="9"></circle>
+                                <line x1="12" y1="3" x2="12" y2="7"></line>
+                                <line x1="12" y1="17" x2="12" y2="21"></line>
+                                <line x1="3" y1="12" x2="7" y2="12"></line>
+                                <line x1="17" y1="12" x2="21" y2="12"></line>
+                            </svg>
+                            <span>🎯 Auto Crop to Center (1080×1920)</span>
+                        </button>
+                    </div>
+
                     <!-- Aspect Ratio Presets -->
                     <div class="ratio-presets-row">
                         <button class="ratio-btn active" data-ratio="original">Original</button>
@@ -352,6 +383,16 @@
                                 <span>4-Side Crop (Screen Trimming)</span>
                             </div>
                             <div class="crop-trim-actions">
+                                <button class="crop-quick-btn active-center" id="btnQuickCenter1080" title="Auto crop 4 sides to 1080x1920 center">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="9"></circle>
+                                        <line x1="12" y1="3" x2="12" y2="7"></line>
+                                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                                        <line x1="3" y1="12" x2="7" y2="12"></line>
+                                        <line x1="17" y1="12" x2="21" y2="12"></line>
+                                    </svg>
+                                    <span>🎯 1080×1920 Center</span>
+                                </button>
                                 <button class="crop-quick-btn active-square" id="btnCropSquare" title="Auto crop 4 sides into an exact 1:1 Square">
                                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
                                         <rect x="3" y="3" width="18" height="18" rx="2"></rect>

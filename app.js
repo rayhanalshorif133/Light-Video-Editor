@@ -124,6 +124,9 @@
     const btnCropSquare = document.getElementById('btnCropSquare');
     const btnCropCenter = document.getElementById('btnCropCenter');
     const btnCropReset = document.getElementById('btnCropReset');
+    const btnAutoCenterCrop = document.getElementById('btnAutoCenterCrop');
+    const btnScreenCenterAutoCrop = document.getElementById('btnScreenCenterAutoCrop');
+    const btnQuickCenter1080 = document.getElementById('btnQuickCenter1080');
 
     const cropSliderTop = document.getElementById('cropSliderTop');
     const cropSliderBottom = document.getElementById('cropSliderBottom');
@@ -1543,6 +1546,69 @@
         showToast('🔲 4 Sides cropped into perfect 1:1 Square!', 2200);
     }
 
+    // Auto Crop strictly to 1080x1920 (9:16 Portrait) Center
+    function autoCenterCrop1080x1920() {
+        const clip = state.clips[state.activeClipIndex];
+        if (!clip || !state.videoWidth || !state.videoHeight) {
+            showToast('Please load a video first!', 2000);
+            return;
+        }
+
+        const rot = (clip.rotation || 0) % 360;
+        const isSideways = (rot === 90 || rot === 270);
+        const vw = isSideways ? (clip.videoHeight || state.videoHeight) : (clip.videoWidth || state.videoWidth);
+        const vh = isSideways ? (clip.videoWidth || state.videoWidth) : (clip.videoHeight || state.videoHeight);
+
+        // Target aspect ratio is strictly 1080 / 1920 (9:16 = 0.5625)
+        const targetAspect = 1080 / 1920;
+        const videoAspect = vw / vh;
+
+        let top = 0, bottom = 0, left = 0, right = 0;
+
+        if (videoAspect > targetAspect) {
+            // Video is wider than 1080x1920 (e.g. 16:9 widescreen or square):
+            // Keep full height (100%), remove equally from left & right to center
+            const keptWidth = vh * targetAspect;
+            const removeFraction = (vw - keptWidth) / vw;
+            const sidePercent = Math.max(0, (removeFraction / 2) * 100);
+            left = parseFloat(sidePercent.toFixed(1));
+            right = parseFloat(sidePercent.toFixed(1));
+            top = 0;
+            bottom = 0;
+        } else if (videoAspect < targetAspect) {
+            // Video is narrower/taller than 1080x1920:
+            // Keep full width (100%), remove equally from top & bottom to center
+            const keptHeight = vw / targetAspect;
+            const removeFraction = (vh - keptHeight) / vh;
+            const sidePercent = Math.max(0, (removeFraction / 2) * 100);
+            top = parseFloat(sidePercent.toFixed(1));
+            bottom = parseFloat(sidePercent.toFixed(1));
+            left = 0;
+            right = 0;
+        } else {
+            // Already exact 1080x1920
+            top = 0;
+            bottom = 0;
+            left = 0;
+            right = 0;
+        }
+
+        clip.crop = { top, bottom, left, right };
+        state.aspectRatio = '9:16';
+
+        document.querySelectorAll('.ratio-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.ratio === '9:16');
+        });
+
+        updateDrawerValues();
+        updateCropOverlayUI();
+        applyVideoTransforms();
+        updateVideoFrameSize();
+
+        pushHistory('Auto Center Crop (1080x1920 Portrait)');
+        showToast('🎯 Video auto cropped to 1080×1920 center!', 2400);
+    }
+
     function centerCropBox() {
         const clip = state.clips[state.activeClipIndex];
         if (!clip || !clip.crop) return;
@@ -1626,9 +1692,12 @@
         const keptH = Math.round(vh * (1 - (top + bottom) / 100));
         const keptRatio = keptH > 0 ? (keptW / keptH) : 1.0;
         const isSquare = Math.abs(keptRatio - 1.0) < 0.02;
+        const is1080x1920 = Math.abs(keptRatio - (9 / 16)) < 0.02;
 
         if (cropInfoTag) {
-            if (isSquare) {
+            if (is1080x1920) {
+                cropInfoTag.textContent = `Portrait 9:16 (${keptW}×${keptH} • 1080×1920)`;
+            } else if (isSquare) {
                 cropInfoTag.textContent = `Square 1:1 (${keptW}×${keptH})`;
             } else {
                 cropInfoTag.textContent = `${keptW}×${keptH} (${keptRatio.toFixed(2)}:1)`;
@@ -1638,15 +1707,25 @@
         if (btnCropSquare) {
             btnCropSquare.classList.toggle('active', isSquare);
         }
+        if (btnAutoCenterCrop) {
+            btnAutoCenterCrop.classList.toggle('active', is1080x1920);
+        }
+        if (btnScreenCenterAutoCrop) {
+            btnScreenCenterAutoCrop.classList.toggle('active', is1080x1920);
+        }
+        if (btnQuickCenter1080) {
+            btnQuickCenter1080.classList.toggle('active', is1080x1920);
+        }
 
         if (cropStatusText) {
-            cropStatusText.textContent = `Removed: Left ${left.toFixed(1)}% • Right ${right.toFixed(1)}% • Up ${top.toFixed(1)}% • Down ${bottom.toFixed(1)}% | Kept: ${keptW}×${keptH}px ${isSquare ? '• Perfect 1:1 Square' : ''}`;
+            cropStatusText.textContent = `Removed: Left ${left.toFixed(1)}% • Right ${right.toFixed(1)}% • Up ${top.toFixed(1)}% • Down ${bottom.toFixed(1)}% | Kept: ${keptW}×${keptH}px ${is1080x1920 ? '• 1080×1920 Center' : isSquare ? '• Perfect 1:1 Square' : ''}`;
         }
     }
 
     function setupHandleDrag(element, handleType) {
         if (!element) return;
         element.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('#btnScreenCenterAutoCrop')) return;
             e.preventDefault();
             e.stopPropagation();
 
@@ -2861,6 +2940,14 @@
         if (btnCropSquare) btnCropSquare.addEventListener('click', makeCropSquare);
         if (btnCropCenter) btnCropCenter.addEventListener('click', centerCropBox);
         if (btnCropReset) btnCropReset.addEventListener('click', resetClipCrop);
+        if (btnAutoCenterCrop) btnAutoCenterCrop.addEventListener('click', autoCenterCrop1080x1920);
+        if (btnQuickCenter1080) btnQuickCenter1080.addEventListener('click', autoCenterCrop1080x1920);
+        if (btnScreenCenterAutoCrop) {
+            btnScreenCenterAutoCrop.addEventListener('click', (e) => {
+                e.stopPropagation();
+                autoCenterCrop1080x1920();
+            });
+        }
 
         // Sliders
         if (cropSliderTop) {
