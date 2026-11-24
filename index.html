@@ -109,6 +109,43 @@
                                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
                             </svg>
                         </div>
+
+                        <!-- CROP OVERLAY (4-Side Interactive Trimming & Square Selection) -->
+                        <div class="crop-overlay-container" id="cropOverlayContainer" style="display:none;">
+                            <div class="crop-mask crop-mask-top" id="cropMaskTop"></div>
+                            <div class="crop-mask crop-mask-bottom" id="cropMaskBottom"></div>
+                            <div class="crop-mask crop-mask-left" id="cropMaskLeft"></div>
+                            <div class="crop-mask crop-mask-right" id="cropMaskRight"></div>
+
+                            <div class="crop-box" id="cropBox">
+                                <div class="crop-grid-h crop-grid-h1"></div>
+                                <div class="crop-grid-h crop-grid-h2"></div>
+                                <div class="crop-grid-v crop-grid-v1"></div>
+                                <div class="crop-grid-v crop-grid-v2"></div>
+
+                                <div class="crop-info-tag" id="cropInfoTag">Square (1:1)</div>
+
+                                <!-- 4 Edge Handles for Left, Right, Up, Down -->
+                                <div class="crop-handle handle-edge handle-top" id="handleTop" data-handle="top" title="Drag to trim Up / Top">
+                                    <span class="handle-bar-h"></span>
+                                </div>
+                                <div class="crop-handle handle-edge handle-bottom" id="handleBottom" data-handle="bottom" title="Drag to trim Down / Bottom">
+                                    <span class="handle-bar-h"></span>
+                                </div>
+                                <div class="crop-handle handle-edge handle-left" id="handleLeft" data-handle="left" title="Drag to trim Left">
+                                    <span class="handle-bar-v"></span>
+                                </div>
+                                <div class="crop-handle handle-edge handle-right" id="handleRight" data-handle="right" title="Drag to trim Right">
+                                    <span class="handle-bar-v"></span>
+                                </div>
+
+                                <!-- 4 Corner Handles -->
+                                <div class="crop-handle handle-corner handle-tl" id="handleTL" data-handle="tl" title="Drag corner to adjust crop"></div>
+                                <div class="crop-handle handle-corner handle-tr" id="handleTR" data-handle="tr" title="Drag corner to adjust crop"></div>
+                                <div class="crop-handle handle-corner handle-bl" id="handleBL" data-handle="bl" title="Drag corner to adjust crop"></div>
+                                <div class="crop-handle handle-corner handle-br" id="handleBR" data-handle="br" title="Drag corner to adjust crop"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- EMPTY STATE (Drag & Drop Prompt) -->
@@ -302,6 +339,93 @@
                         <input type="range" id="zoomSlider" min="100" max="300" step="5" value="100" class="range-slider">
                         <button class="step-btn" id="btnZoomPlus" title="Zoom In">+</button>
                         <button class="preset-pill-btn" id="btnZoomReset">100%</button>
+                    </div>
+
+                    <!-- 4-SIDE CROP / SCREEN REMOVE SECTION -->
+                    <div class="crop-trim-section">
+                        <div class="crop-trim-header">
+                            <div class="crop-trim-title">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M6.13 1L6 16a2 2 0 0 0 2 2h15"></path>
+                                    <path d="M1 6.13L16 6a2 2 0 0 1 2 2v15"></path>
+                                </svg>
+                                <span>4-Side Crop (Screen Trimming)</span>
+                            </div>
+                            <div class="crop-trim-actions">
+                                <button class="crop-quick-btn active-square" id="btnCropSquare" title="Auto crop 4 sides into an exact 1:1 Square">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                                    </svg>
+                                    <span>1:1 Square Shape</span>
+                                </button>
+                                <button class="crop-quick-btn" id="btnCropCenter" title="Center the crop box">
+                                    <span>Center</span>
+                                </button>
+                                <button class="crop-quick-btn" id="btnCropReset" title="Reset all 4 sides crop">
+                                    <span>Reset</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 4-Side Grid Sliders: Top (Up), Bottom (Down), Left, Right -->
+                        <div class="crop-sides-grid">
+                            <!-- Top (Up) -->
+                            <div class="crop-side-item">
+                                <div class="crop-side-label">
+                                    <span>⬆️ Up (Top):</span>
+                                    <span class="crop-side-val" id="cropValTop">0%</span>
+                                </div>
+                                <div class="crop-slider-ctrl">
+                                    <button class="step-btn" id="btnCropTopMinus" title="Decrease top crop">−</button>
+                                    <input type="range" id="cropSliderTop" min="0" max="45" step="0.5" value="0" class="range-slider">
+                                    <button class="step-btn" id="btnCropTopPlus" title="Increase top crop">+</button>
+                                </div>
+                            </div>
+
+                            <!-- Bottom (Down) -->
+                            <div class="crop-side-item">
+                                <div class="crop-side-label">
+                                    <span>⬇️ Down (Bottom):</span>
+                                    <span class="crop-side-val" id="cropValBottom">0%</span>
+                                </div>
+                                <div class="crop-slider-ctrl">
+                                    <button class="step-btn" id="btnCropBottomMinus" title="Decrease bottom crop">−</button>
+                                    <input type="range" id="cropSliderBottom" min="0" max="45" step="0.5" value="0" class="range-slider">
+                                    <button class="step-btn" id="btnCropBottomPlus" title="Increase bottom crop">+</button>
+                                </div>
+                            </div>
+
+                            <!-- Left -->
+                            <div class="crop-side-item">
+                                <div class="crop-side-label">
+                                    <span>⬅️ Left:</span>
+                                    <span class="crop-side-val" id="cropValLeft">0%</span>
+                                </div>
+                                <div class="crop-slider-ctrl">
+                                    <button class="step-btn" id="btnCropLeftMinus" title="Decrease left crop">−</button>
+                                    <input type="range" id="cropSliderLeft" min="0" max="45" step="0.5" value="0" class="range-slider">
+                                    <button class="step-btn" id="btnCropLeftPlus" title="Increase left crop">+</button>
+                                </div>
+                            </div>
+
+                            <!-- Right -->
+                            <div class="crop-side-item">
+                                <div class="crop-side-label">
+                                    <span>➡️ Right:</span>
+                                    <span class="crop-side-val" id="cropValRight">0%</span>
+                                </div>
+                                <div class="crop-slider-ctrl">
+                                    <button class="step-btn" id="btnCropRightMinus" title="Decrease right crop">−</button>
+                                    <input type="range" id="cropSliderRight" min="0" max="45" step="0.5" value="0" class="range-slider">
+                                    <button class="step-btn" id="btnCropRightPlus" title="Increase right crop">+</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status bar / helpful hints -->
+                        <div class="crop-status-bar" id="cropStatusText">
+                            Drag the yellow screen handles or sliders to remove video borders. Click "1:1 Square Shape" to automatically fit into a square.
+                        </div>
                     </div>
                 </div>
             </div>

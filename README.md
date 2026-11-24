@@ -35,7 +35,9 @@ Runs 100% on the client side with zero server dependencies, keeping your media c
   - **Flip Horizontal (Mirror):** Mirror clips horizontally (Shortcut: `H`).
   - **Flip Vertical:** Invert clips vertically.
   - **Reset Transform:** One-click reset to original orientation.
-- **📐 Crop, Aspect Ratio & Fit Mode:**
+- **📐 Crop, 4-Side Screen Trimming & Fit Mode:**
+  - **4-Side Custom Trimming:** Precise screen cropping from all 4 sides (Up/Top, Down/Bottom, Left, Right) using interactive on-screen drag handles or fine sliders.
+  - **1:1 Square Shape Selection:** 1-click automatic square calculation to select and keep any portion of the video in a perfect square shape with draggable positioning.
   - **Aspect Ratios:** `Original`, `16:9` (YouTube / Widescreen), `9:16` (Shorts / Reels / TikTok), `1:1` (Square Instagram), `4:5` (Social Feed), and `21:9` (Ultrawide Cinema).
   - **Fit Styles:** `Fit (Contain)` with clean letterbox, or `Crop to Fill` for borderless edge-to-edge framing.
   - **Zoom / Punch-In:** Smooth 100% to 300% zoom controls.

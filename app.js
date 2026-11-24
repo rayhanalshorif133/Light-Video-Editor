@@ -110,6 +110,39 @@
     const btnZoomMinus = document.getElementById('btnZoomMinus');
     const btnZoomPlus = document.getElementById('btnZoomPlus');
     const btnZoomReset = document.getElementById('btnZoomReset');
+
+    // 4-Side Crop Overlay & Interactive Trimming
+    const cropOverlayContainer = document.getElementById('cropOverlayContainer');
+    const cropMaskTop = document.getElementById('cropMaskTop');
+    const cropMaskBottom = document.getElementById('cropMaskBottom');
+    const cropMaskLeft = document.getElementById('cropMaskLeft');
+    const cropMaskRight = document.getElementById('cropMaskRight');
+    const cropBox = document.getElementById('cropBox');
+    const cropInfoTag = document.getElementById('cropInfoTag');
+    const cropStatusText = document.getElementById('cropStatusText');
+
+    const btnCropSquare = document.getElementById('btnCropSquare');
+    const btnCropCenter = document.getElementById('btnCropCenter');
+    const btnCropReset = document.getElementById('btnCropReset');
+
+    const cropSliderTop = document.getElementById('cropSliderTop');
+    const cropSliderBottom = document.getElementById('cropSliderBottom');
+    const cropSliderLeft = document.getElementById('cropSliderLeft');
+    const cropSliderRight = document.getElementById('cropSliderRight');
+
+    const cropValTop = document.getElementById('cropValTop');
+    const cropValBottom = document.getElementById('cropValBottom');
+    const cropValLeft = document.getElementById('cropValLeft');
+    const cropValRight = document.getElementById('cropValRight');
+
+    const btnCropTopMinus = document.getElementById('btnCropTopMinus');
+    const btnCropTopPlus = document.getElementById('btnCropTopPlus');
+    const btnCropBottomMinus = document.getElementById('btnCropBottomMinus');
+    const btnCropBottomPlus = document.getElementById('btnCropBottomPlus');
+    const btnCropLeftMinus = document.getElementById('btnCropLeftMinus');
+    const btnCropLeftPlus = document.getElementById('btnCropLeftPlus');
+    const btnCropRightMinus = document.getElementById('btnCropRightMinus');
+    const btnCropRightPlus = document.getElementById('btnCropRightPlus');
     const speedValBadge = document.getElementById('speedValBadge');
     const speedSlider = document.getElementById('speedSlider');
     const btnSpeedReset = document.getElementById('btnSpeedReset');
@@ -241,7 +274,7 @@
         checkInitialVideo();
     }
 
-    // Apply real-time CSS transforms (Rotation, Flip, Zoom, Fit) to main video preview
+    // Apply real-time CSS transforms (Rotation, Flip, Zoom, Fit, 4-Side Crop) to main video preview
     function applyVideoTransforms() {
         const clip = state.clips[state.activeClipIndex];
         if (!clip) {
@@ -256,8 +289,26 @@
         const zoom = clip.zoom || 1.0;
         const fitMode = clip.fitMode || state.fitMode || 'contain';
 
-        mainVideo.style.transform = `rotate(${rot}deg) scaleX(${flipH}) scaleY(${flipV}) scale(${zoom})`;
-        mainVideo.style.objectFit = fitMode === 'cover' ? 'cover' : 'contain';
+        const crop = clip.crop || { top: 0, bottom: 0, left: 0, right: 0 };
+        const hasCrop = ((crop.top || 0) > 0 || (crop.bottom || 0) > 0 || (crop.left || 0) > 0 || (crop.right || 0) > 0);
+        const isCropPanelOpen = (panelCrop && panelCrop.style.display === 'block');
+
+        if (isCropPanelOpen || !hasCrop) {
+            // Full video display (guides/handles active or no crop)
+            mainVideo.style.transform = `rotate(${rot}deg) scaleX(${flipH}) scaleY(${flipV}) scale(${zoom})`;
+            mainVideo.style.objectFit = fitMode === 'cover' ? 'cover' : 'contain';
+        } else {
+            // Framed view: video zoomed & shifted to show only the cropped selection
+            const keepW = Math.max(5, 100 - ((crop.left || 0) + (crop.right || 0)));
+            const keepH = Math.max(5, 100 - ((crop.top || 0) + (crop.bottom || 0)));
+            const scaleX = 100 / keepW;
+            const scaleY = 100 / keepH;
+            const shiftX = ((crop.left || 0) - (crop.right || 0)) / 2;
+            const shiftY = ((crop.top || 0) - (crop.bottom || 0)) / 2;
+
+            mainVideo.style.transform = `rotate(${rot}deg) scaleX(${flipH}) scaleY(${flipV}) scale(${zoom}) translate(${-shiftX}%, ${-shiftY}%) scale(${scaleX}, ${scaleY})`;
+            mainVideo.style.objectFit = 'cover';
+        }
     }
 
     // Adapt video frame box to active aspect ratio
@@ -271,12 +322,27 @@
         const containerW = videoPreviewContainer.clientWidth - 32;
         const containerH = videoPreviewContainer.clientHeight - 32;
         
+        const clip = state.clips[state.activeClipIndex];
+        const crop = (clip && clip.crop) || { top: 0, bottom: 0, left: 0, right: 0 };
+        const hasCrop = ((crop.top || 0) > 0 || (crop.bottom || 0) > 0 || (crop.left || 0) > 0 || (crop.right || 0) > 0);
+        const isCropPanelOpen = (panelCrop && panelCrop.style.display === 'block');
+
         let targetAspect = state.videoWidth / state.videoHeight;
         if (state.aspectRatio === '16:9') targetAspect = 16 / 9;
         else if (state.aspectRatio === '9:16') targetAspect = 9 / 16;
         else if (state.aspectRatio === '1:1') targetAspect = 1.0;
         else if (state.aspectRatio === '4:5') targetAspect = 4 / 5;
         else if (state.aspectRatio === '21:9') targetAspect = 21 / 9;
+        else if (state.aspectRatio === 'original' && hasCrop && !isCropPanelOpen) {
+            // Natural aspect ratio of the 4-side cropped video
+            const rot = ((clip && clip.rotation) || 0) % 360;
+            const isSideways = (rot === 90 || rot === 270);
+            const vw = isSideways ? (clip.videoHeight || state.videoHeight) : (clip.videoWidth || state.videoWidth);
+            const vh = isSideways ? (clip.videoWidth || state.videoWidth) : (clip.videoHeight || state.videoHeight);
+            const kw = vw * (1 - ((crop.left || 0) + (crop.right || 0)) / 100);
+            const kh = vh * (1 - ((crop.top || 0) + (crop.bottom || 0)) / 100);
+            if (kw > 0 && kh > 0) targetAspect = kw / kh;
+        }
 
         const containerAspect = containerW / containerH;
 
@@ -291,6 +357,10 @@
 
         videoFrameBox.style.width = `${Math.round(targetW)}px`;
         videoFrameBox.style.height = `${Math.round(targetH)}px`;
+
+        if (isCropPanelOpen) {
+            updateCropOverlayUI();
+        }
     }
 
     function checkInitialVideo() {
@@ -383,7 +453,8 @@
                 flipH: false,
                 flipV: false,
                 zoom: 1.0,
-                fitMode: 'contain'
+                fitMode: 'contain',
+                crop: { top: 0, bottom: 0, left: 0, right: 0 }
             }];
             state.activeClipIndex = 0;
             state.currentTime = 0;
@@ -470,7 +541,8 @@
                         flipH: false,
                         flipV: false,
                         zoom: 1.0,
-                        fitMode: 'contain'
+                        fitMode: 'contain',
+                        crop: { top: 0, bottom: 0, left: 0, right: 0 }
                     };
                     state.clips.push(newClip);
                 }
@@ -1388,6 +1460,280 @@
         }
     }
 
+    // 4-Side Custom Crop Controls
+    function setClipCropSide(side, value, recordHistory = false) {
+        const clip = state.clips[state.activeClipIndex];
+        if (!clip) return;
+        if (!clip.crop) clip.crop = { top: 0, bottom: 0, left: 0, right: 0 };
+
+        const val = Math.max(0, Math.min(45, parseFloat(value) || 0));
+        clip.crop[side] = Math.round(val * 10) / 10;
+
+        // Ensure opposite side doesn't push total removal beyond 90%
+        if (side === 'top' && (clip.crop.top + (clip.crop.bottom || 0) > 90)) {
+            clip.crop.bottom = 90 - clip.crop.top;
+        } else if (side === 'bottom' && (clip.crop.bottom + (clip.crop.top || 0) > 90)) {
+            clip.crop.top = 90 - clip.crop.bottom;
+        } else if (side === 'left' && (clip.crop.left + (clip.crop.right || 0) > 90)) {
+            clip.crop.right = 90 - clip.crop.left;
+        } else if (side === 'right' && (clip.crop.right + (clip.crop.left || 0) > 90)) {
+            clip.crop.left = 90 - clip.crop.right;
+        }
+
+        updateDrawerValues();
+        updateCropOverlayUI();
+        applyVideoTransforms();
+        updateVideoFrameSize();
+
+        if (recordHistory) {
+            pushHistory(`Crop ${side.toUpperCase()} ${clip.crop[side]}%`);
+        }
+    }
+
+    function stepClipCropSide(side, delta) {
+        const clip = state.clips[state.activeClipIndex];
+        if (!clip) return;
+        if (!clip.crop) clip.crop = { top: 0, bottom: 0, left: 0, right: 0 };
+        const current = clip.crop[side] || 0;
+        setClipCropSide(side, current + delta, true);
+    }
+
+    // Auto crop 4 sides into an exact 1:1 Square
+    function makeCropSquare() {
+        const clip = state.clips[state.activeClipIndex];
+        if (!clip || !state.videoWidth || !state.videoHeight) return;
+
+        const rot = (clip.rotation || 0) % 360;
+        const isSideways = (rot === 90 || rot === 270);
+        const vw = isSideways ? (clip.videoHeight || state.videoHeight) : (clip.videoWidth || state.videoWidth);
+        const vh = isSideways ? (clip.videoWidth || state.videoWidth) : (clip.videoHeight || state.videoHeight);
+
+        const ar = vw / vh;
+        let top = 0, bottom = 0, left = 0, right = 0;
+
+        if (ar > 1.0) {
+            // Landscape video: trim Left & Right equally so remaining width == height
+            const totalRemoveFraction = 1.0 - (1.0 / ar);
+            const sidePercent = (totalRemoveFraction / 2) * 100;
+            left = parseFloat(sidePercent.toFixed(1));
+            right = parseFloat(sidePercent.toFixed(1));
+            top = 0;
+            bottom = 0;
+        } else if (ar < 1.0) {
+            // Portrait video: trim Top & Bottom equally so remaining height == width
+            const totalRemoveFraction = 1.0 - ar;
+            const sidePercent = (totalRemoveFraction / 2) * 100;
+            top = parseFloat(sidePercent.toFixed(1));
+            bottom = parseFloat(sidePercent.toFixed(1));
+            left = 0;
+            right = 0;
+        } else {
+            top = 0;
+            bottom = 0;
+            left = 0;
+            right = 0;
+        }
+
+        clip.crop = { top, bottom, left, right };
+        updateDrawerValues();
+        updateCropOverlayUI();
+        applyVideoTransforms();
+        updateVideoFrameSize();
+        pushHistory('Crop 4-Sides to Square (1:1)');
+        showToast('🔲 4 Sides cropped into perfect 1:1 Square!', 2200);
+    }
+
+    function centerCropBox() {
+        const clip = state.clips[state.activeClipIndex];
+        if (!clip || !clip.crop) return;
+        const c = clip.crop;
+        const totalH = (c.left || 0) + (c.right || 0);
+        const totalV = (c.top || 0) + (c.bottom || 0);
+
+        clip.crop = {
+            left: Math.round((totalH / 2) * 10) / 10,
+            right: Math.round((totalH / 2) * 10) / 10,
+            top: Math.round((totalV / 2) * 10) / 10,
+            bottom: Math.round((totalV / 2) * 10) / 10
+        };
+
+        updateDrawerValues();
+        updateCropOverlayUI();
+        applyVideoTransforms();
+        updateVideoFrameSize();
+        pushHistory('Center Crop Box');
+        showToast('🎯 Crop box centered!', 1800);
+    }
+
+    function resetClipCrop() {
+        const clip = state.clips[state.activeClipIndex];
+        if (!clip) return;
+        clip.crop = { top: 0, bottom: 0, left: 0, right: 0 };
+        updateDrawerValues();
+        updateCropOverlayUI();
+        applyVideoTransforms();
+        updateVideoFrameSize();
+        pushHistory('Reset 4-Side Crop');
+        showToast('Reset crop to full screen', 1800);
+    }
+
+    function updateCropOverlayUI() {
+        const clip = state.clips[state.activeClipIndex];
+        if (!clip) return;
+        const crop = clip.crop || { top: 0, bottom: 0, left: 0, right: 0 };
+        const top = Math.max(0, Math.min(45, crop.top || 0));
+        const bottom = Math.max(0, Math.min(45, crop.bottom || 0));
+        const left = Math.max(0, Math.min(45, crop.left || 0));
+        const right = Math.max(0, Math.min(45, crop.right || 0));
+
+        if (cropMaskTop) cropMaskTop.style.height = `${top}%`;
+        if (cropMaskBottom) cropMaskBottom.style.height = `${bottom}%`;
+        if (cropMaskLeft) {
+            cropMaskLeft.style.top = `${top}%`;
+            cropMaskLeft.style.bottom = `${bottom}%`;
+            cropMaskLeft.style.width = `${left}%`;
+        }
+        if (cropMaskRight) {
+            cropMaskRight.style.top = `${top}%`;
+            cropMaskRight.style.bottom = `${bottom}%`;
+            cropMaskRight.style.width = `${right}%`;
+        }
+        if (cropBox) {
+            cropBox.style.top = `${top}%`;
+            cropBox.style.bottom = `${bottom}%`;
+            cropBox.style.left = `${left}%`;
+            cropBox.style.right = `${right}%`;
+        }
+
+        // Sliders & Value Badges
+        if (cropSliderTop) cropSliderTop.value = top;
+        if (cropSliderBottom) cropSliderBottom.value = bottom;
+        if (cropSliderLeft) cropSliderLeft.value = left;
+        if (cropSliderRight) cropSliderRight.value = right;
+
+        if (cropValTop) cropValTop.textContent = `${top.toFixed(1)}%`;
+        if (cropValBottom) cropValBottom.textContent = `${bottom.toFixed(1)}%`;
+        if (cropValLeft) cropValLeft.textContent = `${left.toFixed(1)}%`;
+        if (cropValRight) cropValRight.textContent = `${right.toFixed(1)}%`;
+
+        // Kept aspect ratio and dimensions
+        const rot = (clip.rotation || 0) % 360;
+        const isSideways = (rot === 90 || rot === 270);
+        const vw = isSideways ? (state.videoHeight || 720) : (state.videoWidth || 1280);
+        const vh = isSideways ? (state.videoWidth || 1280) : (state.videoHeight || 720);
+
+        const keptW = Math.round(vw * (1 - (left + right) / 100));
+        const keptH = Math.round(vh * (1 - (top + bottom) / 100));
+        const keptRatio = keptH > 0 ? (keptW / keptH) : 1.0;
+        const isSquare = Math.abs(keptRatio - 1.0) < 0.02;
+
+        if (cropInfoTag) {
+            if (isSquare) {
+                cropInfoTag.textContent = `Square 1:1 (${keptW}×${keptH})`;
+            } else {
+                cropInfoTag.textContent = `${keptW}×${keptH} (${keptRatio.toFixed(2)}:1)`;
+            }
+        }
+
+        if (btnCropSquare) {
+            btnCropSquare.classList.toggle('active', isSquare);
+        }
+
+        if (cropStatusText) {
+            cropStatusText.textContent = `Removed: Left ${left.toFixed(1)}% • Right ${right.toFixed(1)}% • Up ${top.toFixed(1)}% • Down ${bottom.toFixed(1)}% | Kept: ${keptW}×${keptH}px ${isSquare ? '• Perfect 1:1 Square' : ''}`;
+        }
+    }
+
+    function setupHandleDrag(element, handleType) {
+        if (!element) return;
+        element.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const clip = state.clips[state.activeClipIndex];
+            if (!clip) return;
+            if (!clip.crop) clip.crop = { top: 0, bottom: 0, left: 0, right: 0 };
+
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startCrop = {
+                top: clip.crop.top || 0,
+                bottom: clip.crop.bottom || 0,
+                left: clip.crop.left || 0,
+                right: clip.crop.right || 0
+            };
+
+            const rect = videoFrameBox.getBoundingClientRect();
+            const frameW = rect.width || 1;
+            const frameH = rect.height || 1;
+
+            let hasMoved = false;
+
+            function onPointerMove(me) {
+                hasMoved = true;
+                const dx = me.clientX - startX;
+                const dy = me.clientY - startY;
+                const dpX = (dx / frameW) * 100;
+                const dpY = (dy / frameH) * 100;
+
+                let newTop = startCrop.top;
+                let newBottom = startCrop.bottom;
+                let newLeft = startCrop.left;
+                let newRight = startCrop.right;
+
+                if (handleType === 'top' || handleType === 'tl' || handleType === 'tr') {
+                    newTop = Math.max(0, Math.min(45, Math.min(90 - newBottom, startCrop.top + dpY)));
+                }
+                if (handleType === 'bottom' || handleType === 'bl' || handleType === 'br') {
+                    newBottom = Math.max(0, Math.min(45, Math.min(90 - newTop, startCrop.bottom - dpY)));
+                }
+                if (handleType === 'left' || handleType === 'tl' || handleType === 'bl') {
+                    newLeft = Math.max(0, Math.min(45, Math.min(90 - newRight, startCrop.left + dpX)));
+                }
+                if (handleType === 'right' || handleType === 'tr' || handleType === 'br') {
+                    newRight = Math.max(0, Math.min(45, Math.min(90 - newLeft, startCrop.right - dpX)));
+                }
+                if (handleType === 'move') {
+                    const maxShiftLeft = startCrop.left;
+                    const maxShiftRight = startCrop.right;
+                    const shiftX = Math.max(-maxShiftLeft, Math.min(maxShiftRight, dpX));
+
+                    const maxShiftTop = startCrop.top;
+                    const maxShiftBottom = startCrop.bottom;
+                    const shiftY = Math.max(-maxShiftTop, Math.min(maxShiftBottom, dpY));
+
+                    newLeft = startCrop.left + shiftX;
+                    newRight = startCrop.right - shiftX;
+                    newTop = startCrop.top + shiftY;
+                    newBottom = startCrop.bottom - shiftY;
+                }
+
+                clip.crop = {
+                    top: Math.round(newTop * 10) / 10,
+                    bottom: Math.round(newBottom * 10) / 10,
+                    left: Math.round(newLeft * 10) / 10,
+                    right: Math.round(newRight * 10) / 10
+                };
+
+                updateDrawerValues();
+                updateCropOverlayUI();
+                applyVideoTransforms();
+                updateVideoFrameSize();
+            }
+
+            function onPointerUp() {
+                window.removeEventListener('pointermove', onPointerMove);
+                window.removeEventListener('pointerup', onPointerUp);
+                if (hasMoved) {
+                    pushHistory('Adjust 4-Side Crop');
+                }
+            }
+
+            window.addEventListener('pointermove', onPointerMove);
+            window.addEventListener('pointerup', onPointerUp);
+        });
+    }
+
     // --- SUB-PANEL DRAWER (Speed, Volume, Transform, Crop) ---
     function toggleToolDrawer(panelName) {
         const isOpen = toolSubpanel.classList.contains('open');
@@ -1417,6 +1763,18 @@
         btnToolTransform.classList.toggle('active', isTransform);
         btnToolCrop.classList.toggle('active', isCrop);
 
+        if (isCrop) {
+            pause();
+            if (cropOverlayContainer) cropOverlayContainer.style.display = 'block';
+            updateCropOverlayUI();
+            updateVideoFrameSize();
+            applyVideoTransforms();
+        } else {
+            if (cropOverlayContainer) cropOverlayContainer.style.display = 'none';
+            updateVideoFrameSize();
+            applyVideoTransforms();
+        }
+
         updateDrawerValues();
     }
 
@@ -1426,6 +1784,9 @@
         btnToolVolume.classList.remove('active');
         btnToolTransform.classList.remove('active');
         btnToolCrop.classList.remove('active');
+        if (cropOverlayContainer) cropOverlayContainer.style.display = 'none';
+        updateVideoFrameSize();
+        applyVideoTransforms();
     }
 
     function updateDrawerValues() {
@@ -1466,7 +1827,16 @@
         const curFit = clip.fitMode || state.fitMode || 'contain';
         const curZoom = Math.round((clip.zoom || 1.0) * 100);
 
-        if (cropValBadge) cropValBadge.textContent = `${curRatio.toUpperCase()} • ${curFit === 'cover' ? 'Fill' : 'Fit'} • ${curZoom}%`;
+        const crop = clip.crop || { top: 0, bottom: 0, left: 0, right: 0 };
+        const hasCrop = ((crop.top || 0) > 0 || (crop.bottom || 0) > 0 || (crop.left || 0) > 0 || (crop.right || 0) > 0);
+        let cropDesc = `${curRatio.toUpperCase()} • ${curFit === 'cover' ? 'Fill' : 'Fit'}`;
+        if (hasCrop) {
+            cropDesc += ` • Crop (T:${Math.round(crop.top || 0)}% B:${Math.round(crop.bottom || 0)}% L:${Math.round(crop.left || 0)}% R:${Math.round(crop.right || 0)}%)`;
+        } else if (curZoom !== 100) {
+            cropDesc += ` • ${curZoom}%`;
+        }
+
+        if (cropValBadge) cropValBadge.textContent = cropDesc;
         document.querySelectorAll('.ratio-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.ratio === curRatio);
         });
@@ -1474,6 +1844,8 @@
             btn.classList.toggle('active', btn.dataset.fit === curFit);
         });
         if (zoomSlider) zoomSlider.value = curZoom;
+
+        updateCropOverlayUI();
     }
 
     // --- HELPER UTILITIES ---
@@ -1565,6 +1937,17 @@
         let targetAspect = (mainVideo.videoWidth && mainVideo.videoHeight)
             ? (mainVideo.videoWidth / mainVideo.videoHeight)
             : (16 / 9);
+
+        if (clip && clip.crop && state.aspectRatio === 'original') {
+            const c = clip.crop;
+            const rot = ((clip.rotation) || 0) % 360;
+            const isSideways = (rot === 90 || rot === 270);
+            const vw = isSideways ? (mainVideo.videoHeight || 720) : (mainVideo.videoWidth || 1280);
+            const vh = isSideways ? (mainVideo.videoWidth || 1280) : (mainVideo.videoHeight || 720);
+            const kw = vw * (1 - ((c.left || 0) + (c.right || 0)) / 100);
+            const kh = vh * (1 - ((c.top || 0) + (c.bottom || 0)) / 100);
+            if (kw > 0 && kh > 0) targetAspect = kw / kh;
+        }
 
         if (state.aspectRatio === '16:9') targetAspect = 16 / 9;
         else if (state.aspectRatio === '9:16') targetAspect = 9 / 16;
@@ -1715,8 +2098,19 @@
         const rot = ((clip && clip.rotation) || 0) % 360;
         const isSideways = (rot === 90 || rot === 270);
 
-        const srcEffW = isSideways ? vh : vw;
-        const srcEffH = isSideways ? vw : vh;
+        const crop = (clip && clip.crop) || { top: 0, bottom: 0, left: 0, right: 0 };
+        const cropTop = Math.max(0, Math.min(45, crop.top || 0));
+        const cropBottom = Math.max(0, Math.min(45, crop.bottom || 0));
+        const cropLeft = Math.max(0, Math.min(45, crop.left || 0));
+        const cropRight = Math.max(0, Math.min(45, crop.right || 0));
+
+        const sx = vw * (cropLeft / 100);
+        const sy = vh * (cropTop / 100);
+        const sw = Math.max(2, vw * (1 - (cropLeft + cropRight) / 100));
+        const sh = Math.max(2, vh * (1 - (cropTop + cropBottom) / 100));
+
+        const srcEffW = isSideways ? sh : sw;
+        const srcEffH = isSideways ? sw : sh;
         const srcEffAspect = srcEffW / srcEffH;
         const canvasAspect = canvasW / canvasH;
 
@@ -1753,7 +2147,7 @@
             ctx.rotate((rot * Math.PI) / 180);
         }
         ctx.scale(flipH * zoom, flipV * zoom);
-        ctx.drawImage(vid, -drawVidW / 2, -drawVidH / 2, drawVidW, drawVidH);
+        ctx.drawImage(vid, sx, sy, sw, sh, -drawVidW / 2, -drawVidH / 2, drawVidW, drawVidH);
 
         ctx.restore();
     }
@@ -1798,6 +2192,18 @@
         let targetAspect = (mainVideo.videoWidth && mainVideo.videoHeight) 
             ? (mainVideo.videoWidth / mainVideo.videoHeight) 
             : (16 / 9);
+
+        const firstClip = clips[0];
+        if (firstClip && firstClip.crop && state.aspectRatio === 'original') {
+            const c = firstClip.crop;
+            const rot = ((firstClip.rotation) || 0) % 360;
+            const isSideways = (rot === 90 || rot === 270);
+            const vw = isSideways ? (firstClip.videoHeight || state.videoHeight || 720) : (firstClip.videoWidth || state.videoWidth || 1280);
+            const vh = isSideways ? (firstClip.videoWidth || state.videoWidth || 1280) : (firstClip.videoHeight || state.videoHeight || 720);
+            const kw = vw * (1 - ((c.left || 0) + (c.right || 0)) / 100);
+            const kh = vh * (1 - ((c.top || 0) + (c.bottom || 0)) / 100);
+            if (kw > 0 && kh > 0) targetAspect = kw / kh;
+        }
 
         if (state.aspectRatio === '16:9') targetAspect = 16 / 9;
         else if (state.aspectRatio === '9:16') targetAspect = 9 / 16;
@@ -2092,6 +2498,18 @@
             ? (mainVideo.videoWidth / mainVideo.videoHeight)
             : (16 / 9);
 
+        const targetFirstClip = targetClips[0];
+        if (targetFirstClip && targetFirstClip.crop && state.aspectRatio === 'original') {
+            const c = targetFirstClip.crop;
+            const rot = ((targetFirstClip.rotation) || 0) % 360;
+            const isSideways = (rot === 90 || rot === 270);
+            const vw = isSideways ? (targetFirstClip.videoHeight || state.videoHeight || 720) : (targetFirstClip.videoWidth || state.videoWidth || 1280);
+            const vh = isSideways ? (targetFirstClip.videoWidth || state.videoWidth || 1280) : (targetFirstClip.videoHeight || state.videoHeight || 720);
+            const kw = vw * (1 - ((c.left || 0) + (c.right || 0)) / 100);
+            const kh = vh * (1 - ((c.top || 0) + (c.bottom || 0)) / 100);
+            if (kw > 0 && kh > 0) targetAspect = kw / kh;
+        }
+
         if (state.aspectRatio === '16:9') targetAspect = 16 / 9;
         else if (state.aspectRatio === '9:16') targetAspect = 9 / 16;
         else if (state.aspectRatio === '1:1') targetAspect = 1.0;
@@ -2293,7 +2711,10 @@
     // --- EVENT BINDINGS ---
     function bindEvents() {
         btnPlayPause.addEventListener('click', togglePlay);
-        videoFrameBox.addEventListener('click', togglePlay);
+        videoFrameBox.addEventListener('click', () => {
+            if (panelCrop && panelCrop.style.display === 'block') return;
+            togglePlay();
+        });
 
         if (btnSlideToolbarLeft && bottomToolbar) {
             btnSlideToolbarLeft.addEventListener('click', () => {
@@ -2435,6 +2856,63 @@
                 setClipZoom(100, true);
             });
         }
+
+        // 4-Side Custom Crop Buttons & Sliders
+        if (btnCropSquare) btnCropSquare.addEventListener('click', makeCropSquare);
+        if (btnCropCenter) btnCropCenter.addEventListener('click', centerCropBox);
+        if (btnCropReset) btnCropReset.addEventListener('click', resetClipCrop);
+
+        // Sliders
+        if (cropSliderTop) {
+            cropSliderTop.addEventListener('input', (e) => setClipCropSide('top', e.target.value, false));
+            cropSliderTop.addEventListener('change', (e) => setClipCropSide('top', e.target.value, true));
+        }
+        if (cropSliderBottom) {
+            cropSliderBottom.addEventListener('input', (e) => setClipCropSide('bottom', e.target.value, false));
+            cropSliderBottom.addEventListener('change', (e) => setClipCropSide('bottom', e.target.value, true));
+        }
+        if (cropSliderLeft) {
+            cropSliderLeft.addEventListener('input', (e) => setClipCropSide('left', e.target.value, false));
+            cropSliderLeft.addEventListener('change', (e) => setClipCropSide('left', e.target.value, true));
+        }
+        if (cropSliderRight) {
+            cropSliderRight.addEventListener('input', (e) => setClipCropSide('right', e.target.value, false));
+            cropSliderRight.addEventListener('change', (e) => setClipCropSide('right', e.target.value, true));
+        }
+
+        // +/- Step Buttons
+        if (btnCropTopMinus) btnCropTopMinus.addEventListener('click', () => stepClipCropSide('top', -1));
+        if (btnCropTopPlus) btnCropTopPlus.addEventListener('click', () => stepClipCropSide('top', 1));
+        if (btnCropBottomMinus) btnCropBottomMinus.addEventListener('click', () => stepClipCropSide('bottom', -1));
+        if (btnCropBottomPlus) btnCropBottomPlus.addEventListener('click', () => stepClipCropSide('bottom', 1));
+        if (btnCropLeftMinus) btnCropLeftMinus.addEventListener('click', () => stepClipCropSide('left', -1));
+        if (btnCropLeftPlus) btnCropLeftPlus.addEventListener('click', () => stepClipCropSide('left', 1));
+        if (btnCropRightMinus) btnCropRightMinus.addEventListener('click', () => stepClipCropSide('right', -1));
+        if (btnCropRightPlus) btnCropRightPlus.addEventListener('click', () => stepClipCropSide('right', 1));
+
+        // On-screen crop box & handles dragging
+        if (cropOverlayContainer) {
+            cropOverlayContainer.addEventListener('click', (e) => e.stopPropagation());
+        }
+
+        const handleTop = document.getElementById('handleTop');
+        const handleBottom = document.getElementById('handleBottom');
+        const handleLeft = document.getElementById('handleLeft');
+        const handleRight = document.getElementById('handleRight');
+        const handleTL = document.getElementById('handleTL');
+        const handleTR = document.getElementById('handleTR');
+        const handleBL = document.getElementById('handleBL');
+        const handleBR = document.getElementById('handleBR');
+
+        setupHandleDrag(handleTop, 'top');
+        setupHandleDrag(handleBottom, 'bottom');
+        setupHandleDrag(handleLeft, 'left');
+        setupHandleDrag(handleRight, 'right');
+        setupHandleDrag(handleTL, 'tl');
+        setupHandleDrag(handleTR, 'tr');
+        setupHandleDrag(handleBL, 'bl');
+        setupHandleDrag(handleBR, 'br');
+        setupHandleDrag(cropBox, 'move');
 
         document.querySelectorAll('.speed-btn').forEach(btn => {
             btn.addEventListener('click', () => setClipSpeed(btn.dataset.speed, true));
